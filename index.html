@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인천공항 출도착 조회</title>
+<meta name="description" content="인천공항 터미널·게이트별 출도착 편과 노선 특성 조회">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <h1>인천공항 출도착 조회</h1>
+    <p class="lede">터미널과 게이트 단위로 운항 편을 보고, 각 구역이 어떤 노선을 받는지 확인합니다.</p>
+  </div>
+</header>
+
+<div class="controls wrap" role="group" aria-label="조회 조건">
+  <label class="ctl">
+    <span>날짜</span>
+    <select id="sel-date"></select>
+  </label>
+  <label class="ctl">
+    <span>터미널</span>
+    <select id="sel-term">
+      <option value="ALL">전체</option>
+      <option value="T1">제1여객터미널</option>
+      <option value="CONCOURSE">탑승동</option>
+      <option value="T2" selected>제2여객터미널</option>
+    </select>
+  </label>
+  <label class="ctl">
+    <span>구분</span>
+    <select id="sel-dir">
+      <option value="D" selected>출발</option>
+      <option value="A">도착</option>
+    </select>
+  </label>
+  <label class="ctl">
+    <span>코드쉐어</span>
+    <select id="sel-share">
+      <option value="master" selected>제외</option>
+      <option value="all">포함</option>
+    </select>
+  </label>
+  <label class="ctl grow">
+    <span>검색</span>
+    <input id="q" type="search" placeholder="편명, 도시, 항공사, 게이트" autocomplete="off">
+  </label>
+  <button id="reset" type="button" class="ghost">조건 지우기</button>
+</div>
+
+<main class="wrap">
+
+  <section id="spine-wrap" aria-labelledby="h-spine">
+    <h2 id="h-spine">게이트 배치</h2>
+    <p class="hint" id="spine-hint">막대 높이는 게이트별 편수입니다. 구역이나 게이트를 누르면 아래 목록이 좁혀집니다.</p>
+    <div id="spine"></div>
+    <div id="filter-note" hidden></div>
+  </section>
+
+  <section aria-labelledby="h-zone">
+    <h2 id="h-zone">구역별 노선 성격</h2>
+    <div id="zones"></div>
+  </section>
+
+  <section aria-labelledby="h-gates">
+    <h2 id="h-gates">게이트별 운항 편</h2>
+    <div id="gates"></div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p>운항 데이터는 공공데이터포털 인천국제공항공사 여객기 운항 현황(D-3~D+6)에서 매일 수집해 저장합니다.
+     거리 구간은 인천공항 기준 대권거리로 계산했습니다: 단거리 1,500km 미만 / 중거리 1,500~4,000km / 장거리 4,000km 이상.</p>
+  <p id="meta"></p>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

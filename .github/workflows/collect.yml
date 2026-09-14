@@ -1,0 +1,41 @@
+name: 운항 데이터 수집
+
+on:
+  schedule:
+    # 매일 23:40 KST (14:40 UTC) — 당일 게이트 배정이 확정된 뒤
+    - cron: "40 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 수집
+        env:
+          ICN_API_KEY: ${{ secrets.ICN_API_KEY }}
+        run: python scripts/collect.py
+
+      - name: 커밋
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "변경 없음"
+          else
+            git commit -m "data: $(date -u -d '+9 hours' +%Y-%m-%d) 수집"
+            git push
+          fi

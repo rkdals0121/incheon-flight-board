@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+"""
+인천공항 출도착 수집기
+
+공공데이터포털 '인천국제공항공사_여객기 운항 현황 상세 조회 서비스'에서
+출발/도착 편을 받아 data/flights/YYYY-MM-DD.json 으로 저장한다.
+
+사용법:
+    export ICN_API_KEY="발급받은 디코딩 키"
+    python scripts/collect.py --probe              # 응답 구조만 확인 (저장 안 함)
+    python scripts/collect.py                      # 오늘~+3일 수집
+    python scripts/collect.py --days 2026-09-14 2026-09-15
+    python scripts/collect.py --seed p1.json       # airport.kr 백업 형식 변환
+
+파라미터 이름 주의:
+    포털 활용가이드 docx에만 정확한 파라미터명이 있다.
+    아래 PARAMS 딕셔너리 한 곳만 고치면 전체가 따라간다.
+    --probe 로 먼저 응답을 확인할 것.
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+import urllib.parse
+import urllib.request
+from datetime import date, datetime, timedelta
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT_DIR = ROOT / "data" / "flights"
+
+BASE = "http://apis.data.go.kr/B551177/StatusOfPassengerFlightsDeOdp"
+ENDPOINTS = {
+    "D": "/getPassengerDeparturesDeOdp",
+    "A": "/getPassengerArrivalsDeOdp",
+}
+
+# ── 여기만 고치면 됨 ──────────────────────────────────────────────
+PARAMS = {
+    "key": "serviceKey",
+    "rows": "numOfRows",
+    "page": "pageNo",
+    "begin": "search_begin_dt",   # YYYYMMDD
+    "end": "search_end_dt",       # YYYYMMDD
+    "type": "type",               # 응답 포맷
+    "lang": "lang",               # K=한국어
+}
+PARAM_FIXED = {"type": "json", "lang": "K"}
+# ─────────────────────────────────────────────────────────────────
+
+# API 응답 필드 → 우리 스키마. 키가 없으면 순서대로 다음 후보를 찾는다.
+FIELD_MAP = {
+    "flight": ["flightId", "flightid", "airFln", "fnumber"],
+    "master": ["masterFlightId", "masterflight", "masterFln"],
+    "codeshare": ["codeshare", "codeShare"],
+    "airline": ["airline", "airlineKorean", "airlineNameKo"],
+    "gate": ["gatenumber", "gateNumber", "gate"],
+    "terminal": ["terminalid", "terminalId", "terminal"],
+    "scheduled": ["scheduleDateTime", "scheduledDateTime", "std", "sta"],
+    "estimated": ["estimatedDateTime", "etd", "eta"],
+    "airportCode": ["airportCode", "airport", "p1code", "cityCode"],
+    "airportName": ["airport", "airportKorean", "airportName1"],
+    "status": ["remark", "stattxt", "status"],
+    "typeOfFlight": ["typeOfFlight", "flightType"],
+    "carousel": ["carousel"],
+    "exitnumber": ["exitnumber", "exitNumber"],
+}
+
+TERMINAL_CODE = {  # API 터미널 코드 → 우리 키
+    "P01": "T1", "P1": "T1", "T1": "T1",
+    "P02": "CONCOURSE", "P2": "CONCOURSE", "탑승동": "CONCOURSE",
+    "P03": "T2", "P3": "T2", "T2": "T2",
+}
+
+
+def pick(row, key):
+    for cand in FIELD_MAP[key]:
+        v = row.get(cand)
+        if v not in (None, ""):
+            return str(v).strip()
+    return ""
+
+
+def fetch(kind, day, key, page=1, rows=1000, timeout=30):
+    q = {
+        PARAMS["key"]: key,
+        PARAMS["rows"]: rows,
+        PARAMS["page"]: page,
+        PARAMS["begin"]: day,
+        PARAMS["end"]: day,
+    }
+    for k, v in PARAM_FIXED.items():
+        q[PARAMS[k]] = v
+    url = BASE + ENDPOINTS[kind] + "?" + urllib.parse.urlencode(q, safe="%")
+    req = urllib.request.Request(url, headers={"User-Agent": "icn-board/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        raw = r.read().decode("utf-8", "replace")
+    return url, raw
+
+
+def parse(raw):
+    """포털 표준 응답에서 items 배열을 꺼낸다."""
+    data = json.loads(raw)
+    body = data.get("response", {}).get("body", data.get("body", data))
+    items = body.get("items", [])
+    if isinstance(items, dict):
+        items = items.get("item", [])
+    if isinstance(items, dict):
+        items = [items]
+    return items, body
+
+
+def normalize(row, kind):
+    gate = pick(row, "gate")
+    term_raw = pick(row, "terminal")
+    sched = pick(row, "scheduled")
+    return {
+        "dir": kind,                                   # D=출발, A=도착
+        "flight": pick(row, "flight"),
+        "master": pick(row, "master"),
+        "codeshare": pick(row, "codeshare"),
+        "carrier": pick(row, "flight")[:2].upper(),
+        "airline": pick(row, "airline"),
+        "gate": gate if gate.isdigit() else "",
+        "terminal": TERMINAL_CODE.get(term_raw.upper(), term_raw),
+        "sched": sched,                                # YYYYMMDDHHmm
+        "time": sched[8:12] if len(sched) >= 12 else "",
+        "est": pick(row, "estimated"),
+        "port": pick(row, "airportCode").upper(),
+        "portName": pick(row, "airportName"),
+        "status": pick(row, "status"),
+        "intl": pick(row, "typeOfFlight") or "",
+        "carousel": pick(row, "carousel"),
+        "exit": pick(row, "exitnumber"),
+    }
+
+
+def collect_day(day, key, verbose=True):
+    out = []
+    for kind in ("D", "A"):
+        page = 1
+        while page <= 20:
+            url, raw = fetch(kind, day, key, page=page)
+            try:
+                items, body = parse(raw)
+            except json.JSONDecodeError:
+                print(f"  [!] JSON 아님 ({kind} p{page}). 응답 앞부분:", file=sys.stderr)
+                print("  " + raw[:400].replace("\n", " "), file=sys.stderr)
+                return None
+            if not items:
+                break
+            out += [normalize(r, kind) for r in items]
+            total = int(body.get("totalCount", 0) or 0)
+            if verbose:
+                print(f"  {kind} p{page}: {len(items)}건 (누적 {len(out)} / 전체 {total})")
+            if len(items) < 1000:
+                break
+            page += 1
+            time.sleep(0.4)
+    return out
+
+
+def save(day, rows):
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = OUT_DIR / f"{day[:4]}-{day[4:6]}-{day[6:8]}.json"
+    payload = {
+        "date": f"{day[:4]}-{day[4:6]}-{day[6:8]}",
+        "collectedAt": datetime.now().isoformat(timespec="seconds"),
+        "count": len(rows),
+        "flights": rows,
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def update_index():
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    days = sorted(p.stem for p in OUT_DIR.glob("*.json") if p.stem != "index")
+    (ROOT / "data" / "index.json").write_text(
+        json.dumps({"days": days, "updatedAt": datetime.now().isoformat(timespec="seconds")},
+                   ensure_ascii=False, indent=2),
+        encoding="utf-8")
+    return days
+
+
+def seed_from_airportkr(paths):
+    """airport.kr 내부 조회 결과(JSON)를 같은 스키마로 변환. API 승인 전 화면 확인용."""
+    buckets = {}
+    for p in paths:
+        blob = json.loads(Path(p).read_text(encoding="utf-8"))
+        for r in blob.get("scheduleList", []):
+            sched = r.get("atime") or ""
+            day = sched[:8] or r.get("sdate", "")
+            if not day:
+                continue
+            buckets.setdefault(day, []).append({
+                "dir": "D" if r.get("arrivalOrDeparture") == "D" else "A",
+                "flight": r.get("fnumber", ""),
+                "master": r.get("masterflight", ""),
+                "codeshare": r.get("codeshare", ""),
+                "carrier": (r.get("flightCarrier") or r.get("fnumber", "")[:2]).upper(),
+                "airline": r.get("airlineNameKo", ""),
+                "gate": r.get("gatenumber", "") if str(r.get("gatenumber", "")).isdigit() else "",
+                "terminal": TERMINAL_CODE.get((r.get("terminalId") or "").upper(), r.get("terminal", "")),
+                "sched": sched,
+                "time": (r.get("stime") or "").replace(":", ""),
+                "est": "",
+                "port": (r.get("p1code") or "").upper(),
+                "portName": r.get("airportName1", ""),
+                "status": r.get("stattxt", ""),
+                "intl": r.get("typeOfFlight", ""),
+                "carousel": "",
+                "exit": "",
+            })
+    for day, rows in buckets.items():
+        print("seed", save(day, rows), len(rows))
+    update_index()
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--days", nargs="*", help="YYYY-MM-DD 목록. 생략 시 오늘~+3일")
+    ap.add_argument("--probe", action="store_true", help="응답 구조만 출력")
+    ap.add_argument("--seed", nargs="*", help="airport.kr 백업 JSON 변환")
+    args = ap.parse_args()
+
+    if args.seed:
+        seed_from_airportkr(args.seed)
+        return
+
+    key = os.environ.get("ICN_API_KEY", "").strip()
+    if not key:
+        sys.exit("ICN_API_KEY 환경변수가 없다. 포털에서 받은 '디코딩' 키를 넣을 것.")
+
+    if args.probe:
+        today = date.today().strftime("%Y%m%d")
+        for kind in ("D", "A"):
+            url, raw = fetch(kind, today, key, rows=3)
+            print(f"\n=== {kind} ===\n{url.split('serviceKey=')[0]}serviceKey=***")
+            print(raw[:2000])
+        return
+
+    if args.days:
+        days = [d.replace("-", "") for d in args.days]
+    else:
+        days = [(date.today() + timedelta(days=i)).strftime("%Y%m%d") for i in range(4)]
+
+    for day in days:
+        print(f"[{day}]")
+        rows = collect_day(day, key)
+        if rows is None:
+            sys.exit("수집 실패. PARAMS 확인 필요.")
+        if not rows:
+            print("  건너뜀 (0건)")
+            continue
+        print("  →", save(day, rows))
+    print("index:", update_index())
+
+
+if __name__ == "__main__":
+    main()

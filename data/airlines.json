@@ -1,0 +1,638 @@
+{
+ "KE": {
+  "ko": "대한항공",
+  "country": "대한민국",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "OZ": {
+  "ko": "아시아나항공",
+  "country": "대한민국",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "LJ": {
+  "ko": "진에어",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "BX": {
+  "ko": "에어부산",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "7C": {
+  "ko": "제주항공",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "TW": {
+  "ko": "티웨이항공",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "ZE": {
+  "ko": "이스타항공",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "RS": {
+  "ko": "에어서울",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "RF": {
+  "ko": "에어로케이",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "YP": {
+  "ko": "에어프레미아",
+  "country": "대한민국",
+  "type": "HSC",
+  "alliance": "없음"
+ },
+ "4V": {
+  "ko": "파라타항공",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "DL": {
+  "ko": "델타항공",
+  "country": "미국",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "AF": {
+  "ko": "에어프랑스",
+  "country": "프랑스",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "KL": {
+  "ko": "KLM네덜란드항공",
+  "country": "네덜란드",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "MU": {
+  "ko": "중국동방항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "CZ": {
+  "ko": "중국남방항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "MF": {
+  "ko": "샤먼항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "GA": {
+  "ko": "가루다인도네시아",
+  "country": "인도네시아",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "VN": {
+  "ko": "베트남항공",
+  "country": "베트남",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "CI": {
+  "ko": "중화항공",
+  "country": "대만",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "KQ": {
+  "ko": "케냐항공",
+  "country": "케냐",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "UX": {
+  "ko": "에어유로파",
+  "country": "스페인",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "AZ": {
+  "ko": "ITA항공",
+  "country": "이탈리아",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "SU": {
+  "ko": "아에로플로트",
+  "country": "러시아",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "UA": {
+  "ko": "유나이티드항공",
+  "country": "미국",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "AC": {
+  "ko": "에어캐나다",
+  "country": "캐나다",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "NH": {
+  "ko": "전일본공수",
+  "country": "일본",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "SQ": {
+  "ko": "싱가포르항공",
+  "country": "싱가포르",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "TG": {
+  "ko": "타이항공",
+  "country": "태국",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "LH": {
+  "ko": "루프트한자",
+  "country": "독일",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "OS": {
+  "ko": "오스트리아항공",
+  "country": "오스트리아",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "LX": {
+  "ko": "스위스국제항공",
+  "country": "스위스",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "TK": {
+  "ko": "터키시항공",
+  "country": "튀르키예",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "CA": {
+  "ko": "중국국제항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "SK": {
+  "ko": "스칸디나비아항공",
+  "country": "스웨덴",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "LO": {
+  "ko": "폴란드항공",
+  "country": "폴란드",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "ET": {
+  "ko": "에티오피아항공",
+  "country": "에티오피아",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "AI": {
+  "ko": "에어인디아",
+  "country": "인도",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "MS": {
+  "ko": "이집트항공",
+  "country": "이집트",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "TP": {
+  "ko": "TAP포르투갈",
+  "country": "포르투갈",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "SA": {
+  "ko": "남아프리카항공",
+  "country": "남아프리카",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "NZ": {
+  "ko": "에어뉴질랜드",
+  "country": "뉴질랜드",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "JL": {
+  "ko": "일본항공",
+  "country": "일본",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "CX": {
+  "ko": "캐세이퍼시픽",
+  "country": "홍콩",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "QR": {
+  "ko": "카타르항공",
+  "country": "카타르",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "BA": {
+  "ko": "브리티시항공",
+  "country": "영국",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "AA": {
+  "ko": "아메리칸항공",
+  "country": "미국",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "QF": {
+  "ko": "콴타스항공",
+  "country": "호주",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "MH": {
+  "ko": "말레이시아항공",
+  "country": "말레이시아",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "AY": {
+  "ko": "핀에어",
+  "country": "핀란드",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "IB": {
+  "ko": "이베리아항공",
+  "country": "스페인",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "UL": {
+  "ko": "스리랑칸항공",
+  "country": "스리랑카",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "RJ": {
+  "ko": "로열요르단항공",
+  "country": "요르단",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "EK": {
+  "ko": "에미레이트항공",
+  "country": "아랍에미리트",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "EY": {
+  "ko": "에티하드항공",
+  "country": "아랍에미리트",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "VS": {
+  "ko": "버진애틀랜틱항공",
+  "country": "영국",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "HA": {
+  "ko": "하와이안항공",
+  "country": "미국",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "OM": {
+  "ko": "미아트몽골항공",
+  "country": "몽골",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "HU": {
+  "ko": "하이난항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "3U": {
+  "ko": "쓰촨항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "SC": {
+  "ko": "산둥항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "ZH": {
+  "ko": "선전항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "GS": {
+  "ko": "톈진항공",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "9C": {
+  "ko": "춘추항공",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "8L": {
+  "ko": "룽에어",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "KY": {
+  "ko": "쿤밍항공",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "DZ": {
+  "ko": "도날드에어",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "PN": {
+  "ko": "웨스트에어",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "HO": {
+  "ko": "준야오항공",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "BK": {
+  "ko": "오케이항공",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "JD": {
+  "ko": "베이징캐피탈항공",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "UO": {
+  "ko": "홍콩익스프레스",
+  "country": "홍콩",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "HX": {
+  "ko": "홍콩항공",
+  "country": "홍콩",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "NX": {
+  "ko": "에어마카오",
+  "country": "마카오",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "BR": {
+  "ko": "에바항공",
+  "country": "대만",
+  "type": "FSC",
+  "alliance": "스타얼라이언스"
+ },
+ "IT": {
+  "ko": "타이거에어대만",
+  "country": "대만",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "JX": {
+  "ko": "스타럭스항공",
+  "country": "대만",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "MM": {
+  "ko": "피치항공",
+  "country": "일본",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "JW": {
+  "ko": "바닐라에어",
+  "country": "일본",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "7G": {
+  "ko": "스타플라이어",
+  "country": "일본",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "MJ": {
+  "ko": "미얀마항공",
+  "country": "미얀마",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "PR": {
+  "ko": "필리핀항공",
+  "country": "필리핀",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "5J": {
+  "ko": "세부퍼시픽",
+  "country": "필리핀",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "Z2": {
+  "ko": "필리핀에어아시아",
+  "country": "필리핀",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "AK": {
+  "ko": "에어아시아",
+  "country": "말레이시아",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "D7": {
+  "ko": "에어아시아엑스",
+  "country": "말레이시아",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "XJ": {
+  "ko": "타이에어아시아엑스",
+  "country": "태국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "FD": {
+  "ko": "타이에어아시아",
+  "country": "태국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "SL": {
+  "ko": "타이라이온에어",
+  "country": "태국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "WE": {
+  "ko": "타이스마일",
+  "country": "태국",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "VJ": {
+  "ko": "비엣젯항공",
+  "country": "베트남",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "QH": {
+  "ko": "뱀부항공",
+  "country": "베트남",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "BL": {
+  "ko": "퍼시픽항공",
+  "country": "베트남",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "TR": {
+  "ko": "스쿠트항공",
+  "country": "싱가포르",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "QZ": {
+  "ko": "인도네시아에어아시아",
+  "country": "인도네시아",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "ID": {
+  "ko": "바틱에어",
+  "country": "인도네시아",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "K6": {
+  "ko": "캄보디아앙코르항공",
+  "country": "캄보디아",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "QV": {
+  "ko": "라오항공",
+  "country": "라오스",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "HY": {
+  "ko": "우즈베키스탄항공",
+  "country": "우즈베키스탄",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "KC": {
+  "ko": "에어아스타나",
+  "country": "카자흐스탄",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "S7": {
+  "ko": "S7항공",
+  "country": "러시아",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "LY": {
+  "ko": "엘알이스라엘항공",
+  "country": "이스라엘",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "6E": {
+  "ko": "인디고",
+  "country": "인도",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "BG": {
+  "ko": "비만방글라데시항공",
+  "country": "방글라데시",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "Q5": {
+  "ko": "몰디비안",
+  "country": "몰디브",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "AM": {
+  "ko": "아에로멕시코",
+  "country": "멕시코",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ }
+}
