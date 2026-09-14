@@ -89,6 +89,33 @@ section{margin-bottom:34px}
 .m-g[data-on="1"] .m-num{font-weight:700}
 .m-amtag{fill:var(--mark);font-size:11px;font-weight:700}
 
+/* AM 커버리지 */
+#am-body svg{display:block;width:100%;height:auto;margin-top:14px}
+.am-closed{
+  padding:9px 12px;background:var(--panel);border:1px solid var(--mark);
+  border-left-width:3px;border-radius:3px;color:var(--mark);
+  font-size:.88rem;font-weight:600;margin-bottom:12px;
+}
+.am-na{
+  padding:9px 12px;background:var(--panel);border:1px solid var(--rule);
+  border-left:3px solid var(--dim);border-radius:3px;color:var(--dim);font-size:.88rem;
+}
+.am-sum{border-top:1px solid var(--rule)}
+.am-row{
+  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  padding:8px 0;border-bottom:1px solid var(--rule);
+}
+.am-k{font-size:.85rem;color:var(--dim);min-width:8.5em}
+.am-v{font-size:1.1rem;font-weight:640}
+.am-p{font-size:.8rem;color:var(--dim)}
+.am-shade{fill:var(--rule);opacity:.3}
+.am-bar{fill:var(--rule)}
+.am-bar.on{fill:var(--mark)}
+.am-axis{stroke:var(--rule);stroke-width:1}
+.am-n{fill:var(--ink);font-size:11px}
+.am-h{fill:var(--dim);font-size:11px}
+.am-foot{margin-top:10px;font-size:.78rem;color:var(--dim)}
+
 /* gate spine */
 #spine{display:flex;flex-direction:column;gap:22px}
 .pier{border-top:1px solid var(--rule);padding-top:10px}

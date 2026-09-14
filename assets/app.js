@@ -356,6 +356,126 @@ function renderSpine(rows) {
   }
 }
 
+/* ── AM 운영시간 커버리지 ─────────────────────────────
+   AM은 출국여객 전용이다(안내문: 이용대상 모든 출국여객). 따라서 화면의
+   출발/도착 선택과 무관하게 항상 출발편만 센다. 운영시간·정원·휴무일·
+   AM 게이트 구간은 전부 data/zones.json 에서 읽는다.                    */
+
+const DOW = "일월화수목금토";
+const hhmm = (s) => { const [h, m] = s.split(":").map(Number); return h * 60 + m; };
+
+// "목~월 (화·수 휴무)" 처럼 괄호 안에 적힌 휴무 요일을 뽑는다
+function closedDays(daysText) {
+  const paren = /\(([^)]*)\)/.exec(daysText || "");
+  if (!paren || !paren[1].includes("휴무")) return [];
+  const before = paren[1].slice(0, paren[1].indexOf("휴무"));
+  return [...before].filter((ch) => DOW.includes(ch)).map((ch) => DOW.indexOf(ch));
+}
+
+function amGateRanges() {
+  return (S.zones.terminals.T2.zones || []).filter((z) => z.am);
+}
+
+function inAmZone(gate) {
+  const g = parseInt(gate, 10);
+  return amGateRanges().some((z) => g >= z.from && g <= z.to);
+}
+
+function renderAM() {
+  const wrap = $("#am-wrap");
+  if ($("#sel-term").value !== "T2") { wrap.hidden = true; return; }
+  wrap.hidden = false;
+
+  const am = S.zones.am;
+  const host = $("#am-body");
+  host.replaceChildren();
+
+  const day = $("#sel-date").value;
+  const dow = new Date(day + "T00:00:00").getDay();
+  const ranges = amGateRanges().map((z) => `${z.from}~${z.to}`).join(", ");
+  $("#am-hint").textContent =
+    `출발편 기준 · 코드쉐어 제외 · AM 구간 ${ranges} · ${am.days} · ` +
+    am.hours.map((h) => `${h.from}~${h.to}`).join(", ");
+
+  // 휴무일 안내는 집계 가능 여부와 별개로 먼저 보여준다
+  if (closedDays(am.days).includes(dow)) {
+    host.append(el("div", "am-closed", "이 날은 AM 정기 휴무일입니다"));
+  }
+
+  // 화면 필터와 무관하게 그날 T2 출발편 전체로 계산한다
+  const deps = S.flights.filter(
+    (f) => f.dir === "D" && f.codeshare === "Master" &&
+           (f.terminal || termOfGate(f.gate)) === "T2");
+  const withGate = deps.filter((f) => /^\d+$/.test(String(f.gate).trim()));
+  const rate = deps.length ? withGate.length / deps.length : 0;
+
+  if (rate < 0.8) {
+    host.append(el("div", "am-na", "게이트 배정이 확정되지 않아 집계할 수 없습니다"));
+    return;
+  }
+
+  const zoneDeps = withGate.filter((f) => inAmZone(f.gate));
+  const mins = (f) => {
+    const t = String(f.time || "").padStart(4, "0");
+    return +t.slice(0, 2) * 60 + +t.slice(2);
+  };
+  const open = (m) => am.hours.some((h) => m >= hhmm(h.from) && m < hhmm(h.to));
+  const inside = zoneDeps.filter((f) => open(mins(f)));
+  const outside = zoneDeps.length - inside.length;
+
+  const pct = (n, d) => (d ? `${(n / d * 100).toFixed(1)}%` : "—");
+  const sum = el("div", "am-sum");
+  const row = (k, n, note) => {
+    const r = el("div", "am-row");
+    r.append(el("span", "am-k", k));
+    r.append(el("b", "am-v", `${n.toLocaleString()}편`));
+    r.append(el("span", "am-p", note));
+    sum.append(r);
+  };
+  row("AM 구간 출발편", zoneDeps.length, `T2 출발편 ${withGate.length.toLocaleString()}편의 ${pct(zoneDeps.length, withGate.length)}`);
+  row("운영시간 내", inside.length, `AM 구간의 ${pct(inside.length, zoneDeps.length)}`);
+  row("운영시간 밖", outside, `AM 구간의 ${pct(outside, zoneDeps.length)}`);
+  host.append(sum);
+
+  // 시간대 분포
+  const byHour = new Array(24).fill(0);
+  for (const f of zoneDeps) byHour[Math.floor(mins(f) / 60)]++;
+  const peak = Math.max(1, ...byHour);
+  const covered = (h) => am.hours.some((w) => hhmm(w.from) < (h + 1) * 60 && hhmm(w.to) > h * 60);
+
+  const W = 960, x0 = 26, x1 = 934, top = 30, base = 168;
+  const slot = (x1 - x0) / 24, bw = slot * 0.56;
+  const svg = sv("svg", { viewBox: `0 0 ${W} 200`, preserveAspectRatio: "xMidYMid meet",
+    role: "img", "aria-label": "시간대별 AM 구간 출발편 분포" });
+
+  for (let h = 0; h < 24; h++) {
+    const cx = x0 + slot * (h + 0.5);
+    if (covered(h)) {
+      svg.append(sv("rect", { x: (x0 + slot * h).toFixed(1), y: top - 10,
+        width: slot.toFixed(1), height: base - top + 10, class: "am-shade" }));
+    }
+    const c = byHour[h];
+    const bh = c ? Math.max(2, (c / peak) * (base - top)) : 0;
+    if (c) {
+      svg.append(sv("rect", { x: (cx - bw / 2).toFixed(1), y: (base - bh).toFixed(1),
+        width: bw.toFixed(1), height: bh.toFixed(1), class: covered(h) ? "am-bar on" : "am-bar" }));
+      const n = sv("text", { x: cx.toFixed(1), y: (base - bh - 5).toFixed(1),
+        class: "am-n", "text-anchor": "middle" });
+      n.textContent = c;
+      svg.append(n);
+    }
+    const lab = sv("text", { x: cx.toFixed(1), y: base + 17, class: "am-h", "text-anchor": "middle" });
+    lab.textContent = String(h).padStart(2, "0");
+    svg.append(lab);
+  }
+  svg.append(sv("line", { x1: x0, y1: base, x2: x1, y2: base, class: "am-axis" }));
+  host.append(svg);
+
+  const total = am.hours.reduce((s, h) => s + (hhmm(h.to) - hhmm(h.from)), 0);
+  const dur = `${Math.floor(total / 60)}시간${total % 60 ? ` ${total % 60}분` : ""}`;
+  host.append(el("p", "am-foot", `AM 1대 정원 ${am.capacity}명 · 운영시간 하루 ${dur}`));
+}
+
 /* ── 렌더: 구역 성격 ─────────────────────────────────── */
 
 function renderZones(rows) {
@@ -510,6 +630,7 @@ function draw() {
   renderDateNote();
   renderMap(rows);
   renderSpine(rows);
+  renderAM();
   renderZones(rows);
   renderGates(rows);
   const d = $("#sel-date").value;
