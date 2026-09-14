@@ -93,6 +93,185 @@ function visible() {
   });
 }
 
+/* ── T2 평면도 ───────────────────────────────────────
+   공항 공식 안내도(제2여객터미널 3F)의 역U자 배치를 옮긴 것이다.
+   좌우 부두·부채꼴의 번호는 도면에 명시돼 있으나, 중앙 곡선(225~275)은
+   도면에 주기장만 그려져 있어 개별 위치가 추정이다. 따라서 중앙 게이트는
+   번호를 표시하지 않고 호버로만 노출한다.                             */
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const sv = (tag, attrs) => {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+};
+
+const AM_STOPS = { 276: "E1", 280: "E2", 224: "W1", 219: "W2" };
+const PX = { e: 200, w: 800 };            // 좌우 부두 x
+const FAN = { ex: 110, wx: 890, cy: 448, r: 95 };
+
+function buildT2Geo() {
+  const p = [];
+  // 중앙 곡선: 왼쪽 275 → 오른쪽 225 (번호 내림차순). 2차 베지에.
+  for (let i = 0; i <= 50; i++) {
+    const t = i / 50, m = 1 - t;
+    p.push({
+      g: 275 - i, grp: "c", show: false,
+      x: m * m * PX.e + 2 * m * t * 500 + t * t * PX.w,
+      y: m * m * 128 + 2 * m * t * 28 + t * t * 128,
+    });
+  }
+  // 동편 수직 부두 276~282 (위→아래)
+  for (let i = 0; i < 7; i++) p.push({ g: 276 + i, grp: "ep", show: true, x: PX.e, y: 172 + i * 45 });
+  // 동편 부채꼴 283~291
+  for (let i = 0; i < 9; i++) {
+    const a = (i * 120 / 8) * Math.PI / 180;
+    p.push({ g: 283 + i, grp: "ef", show: true, a,
+      x: FAN.ex + FAN.r * Math.cos(a), y: FAN.cy + FAN.r * Math.sin(a) });
+  }
+  // 서편 수직 부두 224~216 (위→아래)
+  for (let i = 0; i < 9; i++) p.push({ g: 224 - i, grp: "wp", show: true, x: PX.w, y: 172 + i * 34 });
+  // 서편 부채꼴 215~208
+  for (let i = 0; i < 8; i++) {
+    const a = (i * 120 / 7) * Math.PI / 180;
+    p.push({ g: 215 - i, grp: "wf", show: true, a,
+      x: FAN.wx - FAN.r * Math.cos(a), y: FAN.cy + FAN.r * Math.sin(a) });
+  }
+  return p;
+}
+
+const T2_GEO = buildT2Geo();
+
+function renderMap(rows) {
+  const wrap = $("#map-wrap");
+  const isT2 = $("#sel-term").value === "T2";
+  $("#spine-hint").textContent = isT2
+    ? "평면도의 점 크기와 막대 높이는 모두 게이트별 편수입니다. 게이트나 구역을 누르면 아래 목록이 좁혀집니다."
+    : "막대 높이는 게이트별 편수입니다. 구역이나 게이트를 누르면 아래 목록이 좁혀집니다.";
+  if (!isT2) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+
+  const host = $("#map");
+  host.replaceChildren();
+
+  const byGate = new Map();
+  for (const f of rows) byGate.set(String(parseInt(f.gate, 10)), (byGate.get(String(parseInt(f.gate, 10))) || 0) + 1);
+  const peak = Math.max(1, ...byGate.values());
+
+  const svg = sv("svg", {
+    viewBox: "0 0 1000 600",
+    preserveAspectRatio: "xMidYMid meet",
+    role: "img",
+    "aria-label": "제2여객터미널 게이트 배치도",
+  });
+
+  const defs = sv("defs");
+  const mk = sv("marker", { id: "am-arrow", viewBox: "0 0 10 10", refX: "8", refY: "5",
+    markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse" });
+  mk.append(sv("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--mark)" }));
+  defs.append(mk);
+  svg.append(defs);
+
+  // 안내선: 중앙 곡선 + 부두 + 부채꼴
+  const guide = sv("g", { class: "m-guide" });
+  guide.append(sv("path", { d: `M${PX.e},128 Q500,28 ${PX.w},128` }));
+  guide.append(sv("path", { d: `M${PX.e},128 L${PX.e},442` }));
+  guide.append(sv("path", { d: `M${PX.w},128 L${PX.w},444` }));
+  const arc = (cx, cy, r, a0, a1, sweep) => {
+    const p0 = [cx + r * Math.cos(a0), cy + r * Math.sin(a0)];
+    const p1 = [cx + r * Math.cos(a1), cy + r * Math.sin(a1)];
+    return `M${p0[0].toFixed(1)},${p0[1].toFixed(1)} A${r},${r} 0 0 ${sweep} ${p1[0].toFixed(1)},${p1[1].toFixed(1)}`;
+  };
+  guide.append(sv("path", { d: arc(FAN.ex, FAN.cy, FAN.r, 0, 120 * Math.PI / 180, 1) }));
+  guide.append(sv("path", { d: arc(FAN.wx, FAN.cy, FAN.r, Math.PI, 60 * Math.PI / 180, 0) }));
+  svg.append(guide);
+
+  // AM 운행 구간 (E1↔E2, W1↔W2)
+  const am = sv("g", { class: "m-am" });
+  // 게이트 번호 라벨 바깥쪽으로 빼서 겹치지 않게 한다
+  am.append(sv("line", { x1: 145, y1: 172, x2: 145, y2: 352,
+    "marker-start": "url(#am-arrow)", "marker-end": "url(#am-arrow)" }));
+  am.append(sv("line", { x1: 855, y1: 172, x2: 855, y2: 342,
+    "marker-start": "url(#am-arrow)", "marker-end": "url(#am-arrow)" }));
+  const amLab = (x, y, t, anchor) => {
+    const n = sv("text", { x, y, class: "m-amlab", "text-anchor": anchor });
+    n.textContent = t;
+    return n;
+  };
+  am.append(amLab(137, 267, "AM", "end"));
+  am.append(amLab(863, 262, "AM", "start"));
+  svg.append(am);
+
+  // 게이트 점
+  const gg = sv("g", { class: "m-gates" });
+  for (const p of T2_GEO) {
+    const key = String(p.g);
+    const c = byGate.get(key) || 0;
+    const on = S.gateFilter === key;
+    // 중앙 곡선은 51개가 좁은 호에 몰려 있다. 반경이 크면 덩어리로 뭉쳐 보이므로
+    // 선형 스케일로 작게 잡고, 편수 차이는 채도로도 함께 표현한다.
+    const r = c ? 2.8 + 4.2 * (c / peak) : 2.2;
+
+    const node = sv("g", { class: "m-g", tabindex: "0", role: "button",
+      "data-has": c ? "1" : "0", "data-am": AM_STOPS[p.g] ? "1" : "0",
+      "data-on": on ? "1" : "0",
+      "aria-label": `${p.g}번 게이트 ${c}편${AM_STOPS[p.g] ? ` · AM ${AM_STOPS[p.g]}` : ""}` });
+
+    node.append(sv("circle", { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 11, class: "m-hit" }));
+    const dot = sv("circle", { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: r.toFixed(1), class: "m-dot" });
+    // 인라인 opacity로 주면 hover·선택 상태 규칙을 이기므로 변수로 넘긴다
+    if (c) dot.style.setProperty("--o", (0.4 + 0.55 * (c / peak)).toFixed(2));
+    node.append(dot);
+
+    const ttl = sv("title");
+    ttl.textContent = `${p.g}번 · ${c}편${AM_STOPS[p.g] ? ` · AM ${AM_STOPS[p.g]} 승하차` : ""}`;
+    node.append(ttl);
+
+    // 도면에 번호가 명시된 구역만 라벨을 단다. 중앙 곡선은 호버로만.
+    if (p.show) {
+      let lx = p.x, ly = p.y, anchor = "middle";
+      if (p.grp === "ep") { lx = p.x - 17; ly = p.y + 4; anchor = "end"; }
+      else if (p.grp === "wp") { lx = p.x + 17; ly = p.y + 4; anchor = "start"; }
+      else if (p.grp === "ef") { lx = FAN.ex + (FAN.r + 21) * Math.cos(p.a); ly = FAN.cy + (FAN.r + 21) * Math.sin(p.a) + 4; }
+      else if (p.grp === "wf") { lx = FAN.wx - (FAN.r + 21) * Math.cos(p.a); ly = FAN.cy + (FAN.r + 21) * Math.sin(p.a) + 4; }
+      const t = sv("text", { x: lx.toFixed(1), y: ly.toFixed(1), class: "m-num", "text-anchor": anchor });
+      t.textContent = p.g;
+      node.append(t);
+    }
+    if (AM_STOPS[p.g]) {
+      const t = sv("text", { class: "m-amtag", "text-anchor": p.grp === "ep" ? "start" : "end",
+        x: (p.grp === "ep" ? p.x + 15 : p.x - 15).toFixed(1), y: (p.y - 9).toFixed(1) });
+      t.textContent = AM_STOPS[p.g];
+      node.append(t);
+    }
+
+    const hit = () => {
+      S.gateFilter = S.gateFilter === key ? null : key;
+      S.zoneFilter = null;
+      draw();
+    };
+    node.addEventListener("click", hit);
+    node.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); hit(); }
+    });
+    gg.append(node);
+  }
+  svg.append(gg);
+
+  // 중앙 곡선 캡션 — 개별 위치가 추정임을 도면 안에 명시한다
+  const cap = sv("text", { x: 500, y: 168, class: "m-cap", "text-anchor": "middle" });
+  cap.textContent = "중앙 (225~275) — 개별 위치는 추정";
+  svg.append(cap);
+
+  host.append(svg);
+
+  const used = T2_GEO.filter((p) => byGate.get(String(p.g))).length;
+  $("#map-cap").textContent =
+    `점 크기는 편수에 비례합니다. 편수 0인 게이트는 흐리게 표시했습니다 (이날 운항 ${used}/${T2_GEO.length}개). ` +
+    `좌우 부두와 부채꼴 번호는 공항 공식 안내도를 따랐고, 중앙 곡선의 개별 게이트 위치는 번호 순서에 따른 추정입니다. ` +
+    `빨간 표시는 AM 승하차지점과 운행 구간입니다.`;
+}
+
 /* ── 렌더: 게이트 배치 ───────────────────────────────── */
 
 function renderSpine(rows) {
@@ -303,8 +482,28 @@ function renderGates(rows) {
 
 /* ── 흐름 ───────────────────────────────────────────── */
 
+/* 게이트·터미널은 운항 1~2일 전에 확정된다. 그 전 날짜는 API가 잠정값을 준다.
+   실측: D+2 이후는 게이트 배정률 0%대이고, T1 편의 약 13%가 탑승동으로 기록된다. */
+function renderDateNote() {
+  const note = $("#date-note");
+  const d = $("#sel-date").value;
+  if (!d) { note.hidden = true; return; }
+  const sel = new Date(d + "T00:00:00");
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((sel - today) / 86400000);
+  if (diff >= 2) {
+    note.textContent = "게이트·터미널 정보가 확정되지 않은 날짜입니다.";
+    note.hidden = false;
+  } else {
+    note.hidden = true;
+  }
+}
+
 function draw() {
   const rows = visible();
+  renderDateNote();
+  renderMap(rows);
   renderSpine(rows);
   renderZones(rows);
   renderGates(rows);

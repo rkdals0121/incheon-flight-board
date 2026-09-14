@@ -53,11 +53,17 @@
   <button id="reset" type="button" class="ghost">조건 지우기</button>
 </div>
 
+<div class="wrap"><p id="date-note" class="date-note" hidden></p></div>
+
 <main class="wrap">
 
   <section id="spine-wrap" aria-labelledby="h-spine">
     <h2 id="h-spine">게이트 배치</h2>
     <p class="hint" id="spine-hint">막대 높이는 게이트별 편수입니다. 구역이나 게이트를 누르면 아래 목록이 좁혀집니다.</p>
+    <figure id="map-wrap" hidden>
+      <div id="map"></div>
+      <figcaption id="map-cap"></figcaption>
+    </figure>
     <div id="spine"></div>
     <div id="filter-note" hidden></div>
   </section>
