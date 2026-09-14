@@ -9,7 +9,6 @@
     export ICN_API_KEY="발급받은 디코딩 키"
     python scripts/collect.py --probe              # 응답 구조만 확인 (저장 안 함)
     python scripts/collect.py                      # 오늘~+3일 수집
-    python scripts/collect.py --days 2026-09-14 2026-09-15
     python scripts/collect.py --seed p1.json       # airport.kr 백업 형식 변환
 
 파라미터 이름 주의:
@@ -145,12 +144,14 @@ def normalize(row, kind):
     }
 
 
-def collect_day(day, key, verbose=True):
-    out = []
+def collect_window(key, verbose=True):
+    """API가 D-3~D+6 전체를 한 번에 주므로 한 번만 받아 날짜별로 나눈다."""
+    rows = []
+    anchor = date.today().strftime("%Y%m%d")
     for kind in ("D", "A"):
         page = 1
-        while page <= 20:
-            url, raw = fetch(kind, day, key, page=page)
+        while page <= 60:
+            url, raw = fetch(kind, anchor, key, page=page)
             try:
                 items, body = parse(raw)
             except json.JSONDecodeError:
@@ -159,15 +160,20 @@ def collect_day(day, key, verbose=True):
                 return None
             if not items:
                 break
-            out += [normalize(r, kind) for r in items]
-            total = int(body.get("totalCount", 0) or 0)
+            rows += [normalize(r, kind) for r in items]
             if verbose:
-                print(f"  {kind} p{page}: {len(items)}건 (누적 {len(out)} / 전체 {total})")
+                print(f"  {kind} p{page}: {len(items)}건 (누적 {len(rows)})")
             if len(items) < 1000:
                 break
             page += 1
             time.sleep(0.4)
-    return out
+
+    buckets = {}
+    for r in rows:
+        day = r["sched"][:8]
+        if len(day) == 8 and day.isdigit():
+            buckets.setdefault(day, []).append(r)
+    return buckets
 
 
 def save(day, rows):
@@ -229,7 +235,6 @@ def seed_from_airportkr(paths):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--days", nargs="*", help="YYYY-MM-DD 목록. 생략 시 오늘~+3일")
     ap.add_argument("--probe", action="store_true", help="응답 구조만 출력")
     ap.add_argument("--seed", nargs="*", help="airport.kr 백업 JSON 변환")
     args = ap.parse_args()
@@ -250,20 +255,14 @@ def main():
             print(raw[:2000])
         return
 
-    if args.days:
-        days = [d.replace("-", "") for d in args.days]
-    else:
-        days = [(date.today() + timedelta(days=i)).strftime("%Y%m%d") for i in range(4)]
+    buckets = collect_window(key)
+    if buckets is None:
+        sys.exit("수집 실패. PARAMS 확인 필요.")
+    if not buckets:
+        sys.exit("수집 결과가 비어 있다.")
 
-    for day in days:
-        print(f"[{day}]")
-        rows = collect_day(day, key)
-        if rows is None:
-            sys.exit("수집 실패. PARAMS 확인 필요.")
-        if not rows:
-            print("  건너뜀 (0건)")
-            continue
-        print("  →", save(day, rows))
+    for day in sorted(buckets):
+        print(f"  → {save(day, buckets[day])} ({len(buckets[day])}건)")
     print("index:", update_index())
 
 
