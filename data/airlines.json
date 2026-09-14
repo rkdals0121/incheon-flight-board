@@ -634,5 +634,77 @@
   "country": "멕시코",
   "type": "FSC",
   "alliance": "스카이팀"
+ },
+ "WS": {
+  "ko": "웨스트젯",
+  "country": "캐나다",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "AS": {
+  "ko": "알래스카항공",
+  "country": "미국",
+  "type": "FSC",
+  "alliance": "원월드"
+ },
+ "FM": {
+  "ko": "상하이항공",
+  "country": "중국",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "CM": {
+  "ko": "코파항공",
+  "country": "파나마",
+  "type": "FSC",
+  "alliance": "스카이팀"
+ },
+ "WY": {
+  "ko": "오만항공",
+  "country": "오만",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "VA": {
+  "ko": "버진오스트레일리아",
+  "country": "호주",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "LA": {
+  "ko": "라탐항공",
+  "country": "칠레",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "B7": {
+  "ko": "유니항공",
+  "country": "대만",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "TN": {
+  "ko": "에어타히티누이",
+  "country": "프랑스령폴리네시아",
+  "type": "FSC",
+  "alliance": "없음"
+ },
+ "QW": {
+  "ko": "칭다오항공",
+  "country": "중국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "ZG": {
+  "ko": "집에어도쿄",
+  "country": "일본",
+  "type": "LCC",
+  "alliance": "없음"
+ },
+ "9G": {
+  "ko": "썬푸꾸옥항공",
+  "country": "베트남",
+  "type": "LCC",
+  "alliance": "없음"
  }
 }
