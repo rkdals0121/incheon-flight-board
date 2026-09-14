@@ -65,6 +65,12 @@
   "type": "LCC",
   "alliance": "없음"
  },
+ "WE": {
+  "ko": "파라타항공",
+  "country": "대한민국",
+  "type": "LCC",
+  "alliance": "없음"
+ },
  "DL": {
   "ko": "델타항공",
   "country": "미국",
