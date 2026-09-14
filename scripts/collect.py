@@ -31,7 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "data" / "flights"
 
-BASE = "http://apis.data.go.kr/B551177/StatusOfPassengerFlightsDeOdp"
+BASE = "https://apis.data.go.kr/B551177/StatusOfPassengerFlightsDeOdp"
 ENDPOINTS = {
     "D": "/getPassengerDeparturesDeOdp",
     "A": "/getPassengerArrivalsDeOdp",
@@ -83,7 +83,7 @@ def pick(row, key):
     return ""
 
 
-def fetch(kind, day, key, page=1, rows=1000, timeout=30):
+def fetch(kind, day, key, page=1, rows=1000, timeout=90, tries=4):
     q = {
         PARAMS["key"]: key,
         PARAMS["rows"]: rows,
@@ -95,9 +95,17 @@ def fetch(kind, day, key, page=1, rows=1000, timeout=30):
         q[PARAMS[k]] = v
     url = BASE + ENDPOINTS[kind] + "?" + urllib.parse.urlencode(q, safe="%")
     req = urllib.request.Request(url, headers={"User-Agent": "icn-board/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        raw = r.read().decode("utf-8", "replace")
-    return url, raw
+    last = None
+    for attempt in range(1, tries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return url, r.read().decode("utf-8", "replace")
+        except Exception as e:
+            last = e
+            print(f"    연결 실패 {attempt}/{tries}: {e}", file=sys.stderr)
+            if attempt < tries:
+                time.sleep(5 * attempt)
+    raise last
 
 
 def parse(raw):
