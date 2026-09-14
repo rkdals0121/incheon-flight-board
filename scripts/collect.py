@@ -30,6 +30,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "data" / "flights"
 
+# 하루치로 보기엔 너무 적은 날짜는 수집 창 경계의 자투리다. 저장하지 않는다.
+MIN_ROWS_PER_DAY = 100
+
 BASE = "https://apis.data.go.kr/B551177/StatusOfPassengerFlightsDeOdp"
 ENDPOINTS = {
     "D": "/getPassengerDeparturesDeOdp",
@@ -173,6 +176,13 @@ def collect_window(key, verbose=True):
         day = r["sched"][:8]
         if len(day) == 8 and day.isdigit():
             buckets.setdefault(day, []).append(r)
+
+    # 수집 창 경계에 자정을 넘겨 걸친 편들이 자투리 날짜를 만든다. 저장하지 않는다.
+    for day in sorted(buckets):
+        if len(buckets[day]) < MIN_ROWS_PER_DAY:
+            dropped = buckets.pop(day)
+            if verbose:
+                print(f"  [-] {day} 제외: {len(dropped)}건 (기준 {MIN_ROWS_PER_DAY}건 미만)")
     return buckets
 
 
