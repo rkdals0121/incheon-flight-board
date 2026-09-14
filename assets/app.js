@@ -113,24 +113,79 @@ const VB_W = 1000, VB_PAD = 58;
    cos(중심위도) 로 가로를 보정하지 않으면 건물이 옆으로 늘어난다.
    터미널마다 독립적으로 bounding box 를 잡는다. 셋은 서로 멀어서
    한 좌표계에 놓으면 각각이 점처럼 작아진다. */
+/* 볼록껍질 (monotone chain). 최소 외접 사각형을 구하는 전 단계다. */
+function convexHull(p) {
+  const pts = p.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length < 3) return pts;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of pts) {
+    while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop();
+    lo.push(q);
+  }
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const q = pts[i];
+    while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop();
+    up.push(q);
+  }
+  lo.pop(); up.pop();
+  return lo.concat(up);
+}
+
+const spanOf = (hull, t) => {
+  const c = Math.cos(t), s = Math.sin(t);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of hull) {
+    const x = p[0] * c - p[1] * s, y = p[0] * s + p[1] * c;
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  return [x1 - x0, y1 - y0];
+};
+
+/* 최소 넓이 외접 사각형의 장축이 수평이 되는 회전각.
+   최소 사각형의 한 변은 반드시 볼록껍질의 한 변과 평행하므로 변마다 검사한다. */
+function minAreaAngle(hull) {
+  let best = 0, bestArea = Infinity;
+  for (let i = 0; i < hull.length; i++) {
+    const a = hull[i], b = hull[(i + 1) % hull.length];
+    const t = -Math.atan2(b[1] - a[1], b[0] - a[0]);
+    const [w, h] = spanOf(hull, t);
+    if (w * h < bestArea) { bestArea = w * h; best = t; }
+  }
+  const [w, h] = spanOf(hull, best);
+  if (w < h) best += Math.PI / 2;      // 장축을 가로로
+  return best;
+}
+
 function projector(terminal) {
   const geo = S.geo.terminals[terminal];
   if (!geo) return null;
   const gates = terminalGates(terminal);
-  const pts = geo.ring.concat(gates.map((g) => g.ll));
-  const k = Math.cos(pts.reduce((s, p) => s + p[1], 0) / pts.length * Math.PI / 180);
-  const xs = pts.map((p) => p[0] * k), ys = pts.map((p) => -p[1]);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs);
-  const y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const bw = x1 - x0 || 1, bh = y1 - y0 || 1;
+  const all = geo.ring.concat(gates.map((g) => g.ll));
+  const k = Math.cos(all.reduce((s, p) => s + p[1], 0) / all.length * Math.PI / 180);
+  const proj = (ll) => [ll[0] * k, -ll[1]];
 
-  const H = Math.max(420, Math.min(820, Math.round(VB_W * bh / bw)));
+  // 회전 행렬만 쓴다. 스케일은 항상 양수이므로 거울 반전이 생기지 않는다.
+  const th = minAreaAngle(convexHull(geo.ring.map(proj)));
+  const ct = Math.cos(th), st = Math.sin(th);
+  const rot = ([x, y]) => [x * ct - y * st, x * st + y * ct];
+
+  const pts = all.map((ll) => rot(proj(ll)));
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs), y0 = Math.min(...ys);
+  const bw = Math.max(...xs) - x0 || 1, bh = Math.max(...ys) - y0 || 1;
+
+  const H = Math.max(300, Math.min(700, Math.round(VB_W * bh / bw)));
   const s = Math.min((VB_W - 2 * VB_PAD) / bw, (H - 2 * VB_PAD) / bh);
   const ox = (VB_W - bw * s) / 2, oy = (H - bh * s) / 2;
   return {
     H,
-    at: (ll) => [ox + (ll[0] * k - x0) * s, oy + (-ll[1] - y0) * s],
+    at: (ll) => { const [x, y] = rot(proj(ll)); return [ox + (x - x0) * s, oy + (y - y0) * s]; },
     center: [VB_W / 2, H / 2],
+    // 투영 공간에서 북쪽은 (0,-1). 같은 각도로 돌려 화면상 북쪽 방향을 얻는다.
+    north: [st, -ct],
+    deg: Math.round(((th * 180 / Math.PI) % 360 + 360) % 360),
   };
 }
 
@@ -180,6 +235,10 @@ function renderMap(rows) {
     markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse" });
   mk.append(sv("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--mark)" }));
   defs.append(mk);
+  const nmk = sv("marker", { id: "n-arrow", viewBox: "0 0 10 10", refX: "8", refY: "5",
+    markerWidth: "5", markerHeight: "5", orient: "auto" });
+  nmk.append(sv("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--ink)" }));
+  defs.append(nmk);
   svg.append(defs);
 
   // 건물 외곽선
@@ -273,6 +332,19 @@ function renderMap(rows) {
     gg.append(node);
   }
   svg.append(gg);
+
+  // 나침반 — 회전했으므로 북쪽을 반드시 표시한다
+  const [nx, ny] = P.north;
+  const cx = VB_W - 52, cy = 46, L = 21;
+  const rose = sv("g", { class: "m-rose" });
+  rose.append(sv("circle", { cx, cy, r: 25, class: "m-rose-bg" }));
+  rose.append(sv("line", { x1: (cx - nx * L * 0.55).toFixed(1), y1: (cy - ny * L * 0.55).toFixed(1),
+    x2: (cx + nx * L).toFixed(1), y2: (cy + ny * L).toFixed(1), "marker-end": "url(#n-arrow)" }));
+  const nl = sv("text", { class: "m-rose-n", "text-anchor": "middle",
+    x: (cx + nx * (L + 11)).toFixed(1), y: (cy + ny * (L + 11) + 3.5).toFixed(1) });
+  nl.textContent = "N";
+  rose.append(nl);
+  svg.append(rose);
   host.append(svg);
 
   // 좌표가 없는 게이트는 지어내지 않는다. 그날 실제로 편이 있는 번호만 알린다.
@@ -286,7 +358,8 @@ function renderMap(rows) {
   const used = gates.filter((x) => byGate.get(x.g)).length;
   cap.append(el("span", null,
     `점 크기는 편수에 비례합니다. 편수 0인 게이트는 흐리게 표시했습니다 (이날 운항 ${used}/${gates.length}개).`));
-  cap.append(el("span", "m-warn", "지리 방위 기준(오른쪽이 동쪽). 공항 안내도와 좌우가 반대입니다."));
+  cap.append(el("span", "m-warn",
+    `도형을 가로로 회전해 표시했습니다. 실제 방위는 나침반 표시를 참고하세요 (북쪽 기준 ${P.deg}° 회전).`));
   if (missing.length) {
     cap.append(el("span", "m-warn", `위치 정보 없음: ${missing.join(", ")}`));
   }

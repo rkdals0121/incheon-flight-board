@@ -72,6 +72,9 @@ section{margin-bottom:34px}
 .m-warn{color:var(--mark)}
 .m-src{opacity:.85}
 
+.m-rose-bg{fill:var(--panel);fill-opacity:.75;stroke:var(--rule);stroke-width:1}
+.m-rose line{stroke:var(--ink);stroke-width:1.6}
+.m-rose-n{fill:var(--ink);font-size:11px;font-weight:700}
 .m-ring{fill:var(--rule);fill-opacity:.38;stroke:var(--dim);stroke-opacity:.5;stroke-width:1.2;stroke-linejoin:round}
 .m-am line{stroke:var(--mark);stroke-width:1.6;stroke-dasharray:5 4;opacity:.85}
 .m-amlab{fill:var(--mark);font-size:12px;font-weight:600;letter-spacing:.04em}
