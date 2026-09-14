@@ -108,7 +108,10 @@ const sv = (tag, attrs) => {
 
 const AM_STOPS = { 276: "E1", 280: "E2", 224: "W1", 219: "W2" };
 const PX = { e: 200, w: 800 };            // 좌우 부두 x
-const FAN = { ex: 110, wx: 890, cy: 448, r: 95 };
+// 부두 끝이 둥글게 부푼 불브. 가지는 아래쪽 반원(180°)으로 펼쳐지며,
+// 끝이 위로 되말리지 않도록 시작·끝 각을 수평선 근처에서 끊는다.
+const FAN = { cy: 470, r: 66, a0: 185, a1: 5 };
+const rad = (d) => d * Math.PI / 180;
 
 function buildT2Geo() {
   const p = [];
@@ -123,19 +126,21 @@ function buildT2Geo() {
   }
   // 동편 수직 부두 276~282 (위→아래)
   for (let i = 0; i < 7; i++) p.push({ g: 276 + i, grp: "ep", show: true, x: PX.e, y: 172 + i * 45 });
-  // 동편 부채꼴 283~291
+  // 동편 부채꼴 283~291: 바깥(왼쪽) 위 → 아래 → 안쪽(오른쪽)
   for (let i = 0; i < 9; i++) {
-    const a = (i * 120 / 8) * Math.PI / 180;
-    p.push({ g: 283 + i, grp: "ef", show: true, a,
-      x: FAN.ex + FAN.r * Math.cos(a), y: FAN.cy + FAN.r * Math.sin(a) });
+    const a = rad(FAN.a0 - i * (FAN.a0 - FAN.a1) / 8);
+    p.push({ g: 283 + i, grp: "ef", show: true,
+      x: PX.e + FAN.r * Math.cos(a), y: FAN.cy + FAN.r * Math.sin(a),
+      lx: PX.e + (FAN.r + 20) * Math.cos(a), ly: FAN.cy + (FAN.r + 20) * Math.sin(a) + 4 });
   }
   // 서편 수직 부두 224~216 (위→아래)
   for (let i = 0; i < 9; i++) p.push({ g: 224 - i, grp: "wp", show: true, x: PX.w, y: 172 + i * 34 });
-  // 서편 부채꼴 215~208
+  // 서편 부채꼴 215~208: 동편과 좌우 대칭
   for (let i = 0; i < 8; i++) {
-    const a = (i * 120 / 7) * Math.PI / 180;
-    p.push({ g: 215 - i, grp: "wf", show: true, a,
-      x: FAN.wx - FAN.r * Math.cos(a), y: FAN.cy + FAN.r * Math.sin(a) });
+    const a = rad(-FAN.a1 + i * (FAN.a0 - FAN.a1) / 7);
+    p.push({ g: 215 - i, grp: "wf", show: true,
+      x: PX.w + FAN.r * Math.cos(a), y: FAN.cy + FAN.r * Math.sin(a),
+      lx: PX.w + (FAN.r + 20) * Math.cos(a), ly: FAN.cy + (FAN.r + 20) * Math.sin(a) + 4 });
   }
   return p;
 }
@@ -175,15 +180,16 @@ function renderMap(rows) {
   // 안내선: 중앙 곡선 + 부두 + 부채꼴
   const guide = sv("g", { class: "m-guide" });
   guide.append(sv("path", { d: `M${PX.e},128 Q500,28 ${PX.w},128` }));
-  guide.append(sv("path", { d: `M${PX.e},128 L${PX.e},442` }));
-  guide.append(sv("path", { d: `M${PX.w},128 L${PX.w},444` }));
-  const arc = (cx, cy, r, a0, a1, sweep) => {
-    const p0 = [cx + r * Math.cos(a0), cy + r * Math.sin(a0)];
-    const p1 = [cx + r * Math.cos(a1), cy + r * Math.sin(a1)];
-    return `M${p0[0].toFixed(1)},${p0[1].toFixed(1)} A${r},${r} 0 0 ${sweep} ${p1[0].toFixed(1)},${p1[1].toFixed(1)}`;
+  guide.append(sv("path", { d: `M${PX.e},128 L${PX.e},${FAN.cy}` }));
+  guide.append(sv("path", { d: `M${PX.w},128 L${PX.w},${FAN.cy}` }));
+  const arc = (cx, a0, a1, sweep) => {
+    const pt = (d) => [cx + FAN.r * Math.cos(rad(d)), FAN.cy + FAN.r * Math.sin(rad(d))];
+    const [x0, y0] = pt(a0), [x1, y1] = pt(a1);
+    return `M${x0.toFixed(1)},${y0.toFixed(1)} A${FAN.r},${FAN.r} 0 0 ${sweep} ${x1.toFixed(1)},${y1.toFixed(1)}`;
   };
-  guide.append(sv("path", { d: arc(FAN.ex, FAN.cy, FAN.r, 0, 120 * Math.PI / 180, 1) }));
-  guide.append(sv("path", { d: arc(FAN.wx, FAN.cy, FAN.r, Math.PI, 60 * Math.PI / 180, 0) }));
+  // 아래쪽 반원을 지나도록 그린다 (동편은 각도 감소, 서편은 증가)
+  guide.append(sv("path", { d: arc(PX.e, FAN.a0, FAN.a1, 0) }));
+  guide.append(sv("path", { d: arc(PX.w, -FAN.a1, FAN.a0, 1) }));
   svg.append(guide);
 
   // AM 운행 구간 (E1↔E2, W1↔W2)
@@ -232,8 +238,7 @@ function renderMap(rows) {
       let lx = p.x, ly = p.y, anchor = "middle";
       if (p.grp === "ep") { lx = p.x - 17; ly = p.y + 4; anchor = "end"; }
       else if (p.grp === "wp") { lx = p.x + 17; ly = p.y + 4; anchor = "start"; }
-      else if (p.grp === "ef") { lx = FAN.ex + (FAN.r + 21) * Math.cos(p.a); ly = FAN.cy + (FAN.r + 21) * Math.sin(p.a) + 4; }
-      else if (p.grp === "wf") { lx = FAN.wx - (FAN.r + 21) * Math.cos(p.a); ly = FAN.cy + (FAN.r + 21) * Math.sin(p.a) + 4; }
+      else { lx = p.lx; ly = p.ly; }
       const t = sv("text", { x: lx.toFixed(1), y: ly.toFixed(1), class: "m-num", "text-anchor": anchor });
       t.textContent = p.g;
       node.append(t);
