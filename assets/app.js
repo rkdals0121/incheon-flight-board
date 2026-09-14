@@ -361,16 +361,10 @@ function renderSpine(rows) {
    출발/도착 선택과 무관하게 항상 출발편만 센다. 운영시간·정원·휴무일·
    AM 게이트 구간은 전부 data/zones.json 에서 읽는다.                    */
 
-const DOW = "일월화수목금토";
 const hhmm = (s) => { const [h, m] = s.split(":").map(Number); return h * 60 + m; };
 
-// "목~월 (화·수 휴무)" 처럼 괄호 안에 적힌 휴무 요일을 뽑는다
-function closedDays(daysText) {
-  const paren = /\(([^)]*)\)/.exec(daysText || "");
-  if (!paren || !paren[1].includes("휴무")) return [];
-  const before = paren[1].slice(0, paren[1].indexOf("휴무"));
-  return [...before].filter((ch) => DOW.includes(ch)).map((ch) => DOW.indexOf(ch));
-}
+// zones.json 의 closedWeekdays 는 월=0 기준이다. Date.getDay() 는 일=0 이므로 맞춰준다.
+const monIndex = (d) => (d.getDay() + 6) % 7;
 
 function amGateRanges() {
   return (S.zones.terminals.T2.zones || []).filter((z) => z.am);
@@ -391,14 +385,14 @@ function renderAM() {
   host.replaceChildren();
 
   const day = $("#sel-date").value;
-  const dow = new Date(day + "T00:00:00").getDay();
+  const dow = monIndex(new Date(day + "T00:00:00"));
   const ranges = amGateRanges().map((z) => `${z.from}~${z.to}`).join(", ");
   $("#am-hint").textContent =
     `출발편 기준 · 코드쉐어 제외 · AM 구간 ${ranges} · ${am.days} · ` +
     am.hours.map((h) => `${h.from}~${h.to}`).join(", ");
 
   // 휴무일 안내는 집계 가능 여부와 별개로 먼저 보여준다
-  if (closedDays(am.days).includes(dow)) {
+  if ((am.closedWeekdays || []).includes(dow)) {
     host.append(el("div", "am-closed", "이 날은 AM 정기 휴무일입니다"));
   }
 
@@ -437,10 +431,15 @@ function renderAM() {
   row("운영시간 밖", outside, `AM 구간의 ${pct(outside, zoneDeps.length)}`);
   host.append(sum);
 
-  // 시간대 분포
-  const byHour = new Array(24).fill(0);
-  for (const f of zoneDeps) byHour[Math.floor(mins(f) / 60)]++;
-  const peak = Math.max(1, ...byHour);
+  // 시간대 분포. 막대를 편 단위로 쪼개 쌓으므로, 빨간 부분의 총합이
+  // 위 "운영시간 내" 편수와 정확히 일치한다.
+  const byHour = Array.from({ length: 24 }, () => ({ in: 0, out: 0, total: 0 }));
+  for (const f of zoneDeps) {
+    const b = byHour[Math.floor(mins(f) / 60)];
+    if (open(mins(f))) b.in++; else b.out++;
+    b.total++;
+  }
+  const peak = Math.max(1, ...byHour.map((b) => b.total));
   const covered = (h) => am.hours.some((w) => hhmm(w.from) < (h + 1) * 60 && hhmm(w.to) > h * 60);
 
   const W = 960, x0 = 26, x1 = 934, top = 30, base = 168;
@@ -454,15 +453,28 @@ function renderAM() {
       svg.append(sv("rect", { x: (x0 + slot * h).toFixed(1), y: top - 10,
         width: slot.toFixed(1), height: base - top + 10, class: "am-shade" }));
     }
-    const c = byHour[h];
-    const bh = c ? Math.max(2, (c / peak) * (base - top)) : 0;
-    if (c) {
-      svg.append(sv("rect", { x: (cx - bw / 2).toFixed(1), y: (base - bh).toFixed(1),
-        width: bw.toFixed(1), height: bh.toFixed(1), class: covered(h) ? "am-bar on" : "am-bar" }));
+    const b = byHour[h];
+    if (b.total) {
+      const bh = Math.max(2, (b.total / peak) * (base - top));
+      const inH = b.total ? bh * (b.in / b.total) : 0;
+      const g = sv("g", { class: "am-col" });
+      // 아래가 운영시간 내(--mark), 위가 운영시간 밖(--rule)
+      if (b.out) {
+        g.append(sv("rect", { x: (cx - bw / 2).toFixed(1), y: (base - bh).toFixed(1),
+          width: bw.toFixed(1), height: (bh - inH).toFixed(1), class: "am-bar" }));
+      }
+      if (b.in) {
+        g.append(sv("rect", { x: (cx - bw / 2).toFixed(1), y: (base - inH).toFixed(1),
+          width: bw.toFixed(1), height: inH.toFixed(1), class: "am-bar on" }));
+      }
       const n = sv("text", { x: cx.toFixed(1), y: (base - bh - 5).toFixed(1),
         class: "am-n", "text-anchor": "middle" });
-      n.textContent = c;
-      svg.append(n);
+      n.textContent = b.total;
+      g.append(n);
+      const ttl = sv("title");
+      ttl.textContent = `${h}시 · 총 ${b.total}편 (운영시간 내 ${b.in}편)`;
+      g.append(ttl);
+      svg.append(g);
     }
     const lab = sv("text", { x: cx.toFixed(1), y: base + 17, class: "am-h", "text-anchor": "middle" });
     lab.textContent = String(h).padStart(2, "0");

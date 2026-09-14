@@ -39,6 +39,7 @@
     "terminal": "T2",
     "floor": "3F 양끝",
     "days": "목~월 (화·수 휴무)",
+    "closedWeekdays": [1, 2],
     "hours": [
       { "from": "12:00", "to": "14:00" },
       { "from": "15:00", "to": "17:00" },
