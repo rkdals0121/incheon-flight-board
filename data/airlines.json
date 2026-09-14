@@ -30,7 +30,7 @@
   "alliance": "없음"
  },
  "TW": {
-  "ko": "티웨이항공",
+  "ko": "트리니티항공",
   "country": "대한민국",
   "type": "LCC",
   "alliance": "없음"
@@ -531,12 +531,6 @@
   "ko": "타이라이온에어",
   "country": "태국",
   "type": "LCC",
-  "alliance": "없음"
- },
- "WE": {
-  "ko": "타이스마일",
-  "country": "태국",
-  "type": "FSC",
   "alliance": "없음"
  },
  "VJ": {
