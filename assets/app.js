@@ -107,41 +107,64 @@ const sv = (tag, attrs) => {
 };
 
 const AM_STOPS = { 276: "E1", 280: "E2", 224: "W1", 219: "W2" };
-const PX = { e: 200, w: 800 };            // 좌우 부두 x
-// 부두 끝이 둥글게 부푼 불브. 가지는 아래쪽 반원(180°)으로 펼쳐지며,
-// 끝이 위로 되말리지 않도록 시작·끝 각을 수평선 근처에서 끊는다.
-const FAN = { cy: 470, r: 66, a0: 185, a1: 5 };
 const rad = (d) => d * Math.PI / 180;
+
+/* 공식 안내도(am-map1-s.jpg)의 비율을 따른다. 실제 도면은 가로로 길고
+   세로가 짧다: 상단 콘코스는 폭의 1/20 두께인 거의 평평한 슬래브,
+   부두는 폭이 있는 복도, 부두 끝은 속이 찬 물방울에서 가지가 뻗는다. */
+const M = {
+  pierW: 17,                       // 복도 반폭
+  eX: 210, wX: 790,                // 좌우 복도 중심
+  slabTop: 42, slabBot: 88,        // 슬래브 상·하단 (양 끝 기준)
+  slabTopMid: 26, slabBotMid: 60,  // 곡선 제어점 (가운데가 살짝 올라간 완만한 활)
+  pierTop: 112, pierBot: 340,      // 부두 게이트 첫·끝 y
+  stub: 17, dotOut: 0, labOut: 12, // 가지 길이와 라벨 간격
+  bulbY: 398, rx: 54, ry: 44,      // 물방울
+  fanA0: 193, fanA1: -13,          // 가지 방사 각도 (바깥 위 → 아래 → 안쪽)
+};
+const curveY = (t, a, mid) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * mid + t * t * a;
+const curveX = (t) => (1 - t) * (1 - t) * (M.eX - M.pierW) + 2 * (1 - t) * t * 500 + t * t * (M.wX + M.pierW);
 
 function buildT2Geo() {
   const p = [];
-  // 중앙 곡선: 왼쪽 275 → 오른쪽 225 (번호 내림차순). 2차 베지에.
+  // 중앙 콘코스 225~275: 슬래브 중앙선을 따라. 왼쪽 275 → 오른쪽 225.
+  // 274·275·225 는 도면에 번호가 표기돼 있으므로 바깥쪽에 라벨을 단다.
   for (let i = 0; i <= 50; i++) {
-    const t = i / 50, m = 1 - t;
-    p.push({
-      g: 275 - i, grp: "c", show: false,
-      x: m * m * PX.e + 2 * m * t * 500 + t * t * PX.w,
-      y: m * m * 128 + 2 * m * t * 28 + t * t * 128,
-    });
+    const t = i / 50, g = 275 - i;
+    const pt = { g, grp: "c", show: false, x: curveX(t),
+      y: (curveY(t, M.slabTop, M.slabTopMid) + curveY(t, M.slabBot, M.slabBotMid)) / 2 };
+    const outE = M.eX - M.pierW - M.stub - M.labOut;
+    const outW = M.wX + M.pierW + M.stub + M.labOut;
+    if (g === 275) Object.assign(pt, { show: true, lx: outE, ly: 44, anchor: "end" });
+    if (g === 274) Object.assign(pt, { show: true, lx: outE, ly: 64, anchor: "end" });
+    if (g === 225) Object.assign(pt, { show: true, lx: outW, ly: 44, anchor: "start" });
+    p.push(pt);
   }
-  // 동편 수직 부두 276~282 (위→아래)
-  for (let i = 0; i < 7; i++) p.push({ g: 276 + i, grp: "ep", show: true, x: PX.e, y: 172 + i * 45 });
-  // 동편 부채꼴 283~291: 바깥(왼쪽) 위 → 아래 → 안쪽(오른쪽)
-  for (let i = 0; i < 9; i++) {
-    const a = rad(FAN.a0 - i * (FAN.a0 - FAN.a1) / 8);
-    p.push({ g: 283 + i, grp: "ef", show: true,
-      x: PX.e + FAN.r * Math.cos(a), y: FAN.cy + FAN.r * Math.sin(a),
-      lx: PX.e + (FAN.r + 20) * Math.cos(a), ly: FAN.cy + (FAN.r + 20) * Math.sin(a) + 4 });
-  }
-  // 서편 수직 부두 224~216 (위→아래)
-  for (let i = 0; i < 9; i++) p.push({ g: 224 - i, grp: "wp", show: true, x: PX.w, y: 172 + i * 34 });
-  // 서편 부채꼴 215~208: 동편과 좌우 대칭
-  for (let i = 0; i < 8; i++) {
-    const a = rad(-FAN.a1 + i * (FAN.a0 - FAN.a1) / 7);
-    p.push({ g: 215 - i, grp: "wf", show: true,
-      x: PX.w + FAN.r * Math.cos(a), y: FAN.cy + FAN.r * Math.sin(a),
-      lx: PX.w + (FAN.r + 20) * Math.cos(a), ly: FAN.cy + (FAN.r + 20) * Math.sin(a) + 4 });
-  }
+
+  // 부두: 게이트는 복도 바깥쪽으로 짧게 튀어나온 가지 끝에 붙는다
+  const pier = (g, i, n, side) => {
+    const y = M.pierTop + i * (M.pierBot - M.pierTop) / (n - 1);
+    const edge = side === "e" ? M.eX - M.pierW : M.wX + M.pierW;
+    const x = side === "e" ? edge - M.stub : edge + M.stub;
+    return { g, grp: side === "e" ? "ep" : "wp", side, show: true, x, y, edge,
+      lx: side === "e" ? x - M.labOut : x + M.labOut, ly: y + 4,
+      anchor: side === "e" ? "end" : "start" };
+  };
+  for (let i = 0; i < 7; i++) p.push(pier(276 + i, i, 7, "e"));
+  for (let i = 0; i < 9; i++) p.push(pier(224 - i, i, 9, "w"));
+
+  // 물방울에서 방사하는 가지. 동편은 바깥(왼쪽) 위 → 아래 → 안쪽(오른쪽).
+  const fan = (g, i, n, cx, side) => {
+    const span = M.fanA0 - M.fanA1;
+    const a = rad(side === "e" ? M.fanA0 - i * span / (n - 1) : M.fanA1 + i * span / (n - 1));
+    const co = Math.cos(a), si = Math.sin(a);
+    const at = (k) => ({ x: cx + (M.rx + k) * co, y: M.bulbY + (M.ry + k) * si });
+    const root = at(-4), tip = at(M.stub), lab = at(M.stub + M.labOut + 5);
+    return { g, grp: side === "e" ? "ef" : "wf", side, show: true,
+      x: tip.x, y: tip.y, ex: root.x, ey: root.y, lx: lab.x, ly: lab.y + 4, anchor: "middle" };
+  };
+  for (let i = 0; i < 9; i++) p.push(fan(283 + i, i, 9, M.eX, "e"));
+  for (let i = 0; i < 8; i++) p.push(fan(215 - i, i, 8, M.wX, "w"));
   return p;
 }
 
@@ -164,7 +187,7 @@ function renderMap(rows) {
   const peak = Math.max(1, ...byGate.values());
 
   const svg = sv("svg", {
-    viewBox: "0 0 1000 600",
+    viewBox: "0 0 1000 500",
     preserveAspectRatio: "xMidYMid meet",
     role: "img",
     "aria-label": "제2여객터미널 게이트 배치도",
@@ -177,35 +200,54 @@ function renderMap(rows) {
   defs.append(mk);
   svg.append(defs);
 
-  // 안내선: 중앙 곡선 + 부두 + 부채꼴
-  const guide = sv("g", { class: "m-guide" });
-  guide.append(sv("path", { d: `M${PX.e},128 Q500,28 ${PX.w},128` }));
-  guide.append(sv("path", { d: `M${PX.e},128 L${PX.e},${FAN.cy}` }));
-  guide.append(sv("path", { d: `M${PX.w},128 L${PX.w},${FAN.cy}` }));
-  const arc = (cx, a0, a1, sweep) => {
-    const pt = (d) => [cx + FAN.r * Math.cos(rad(d)), FAN.cy + FAN.r * Math.sin(rad(d))];
-    const [x0, y0] = pt(a0), [x1, y1] = pt(a1);
-    return `M${x0.toFixed(1)},${y0.toFixed(1)} A${FAN.r},${FAN.r} 0 0 ${sweep} ${x1.toFixed(1)},${y1.toFixed(1)}`;
-  };
-  // 아래쪽 반원을 지나도록 그린다 (동편은 각도 감소, 서편은 증가)
-  guide.append(sv("path", { d: arc(PX.e, FAN.a0, FAN.a1, 0) }));
-  guide.append(sv("path", { d: arc(PX.w, -FAN.a1, FAN.a0, 1) }));
-  svg.append(guide);
+  // 터미널 본체: 슬래브 + 복도 + 물방울을 면으로 그린다
+  const shell = sv("g", { class: "m-shell" });
+  const eIn = M.eX - M.pierW, eOut = M.eX + M.pierW;
+  const wIn = M.wX - M.pierW, wOut = M.wX + M.pierW;
+  // 슬래브: 위·아래 모서리가 모두 완만한 활인 가로로 긴 판
+  shell.append(sv("path", { d:
+    `M${eIn},${M.slabTop} Q500,${M.slabTopMid} ${wOut},${M.slabTop}` +
+    ` L${wOut},${M.slabBot} Q500,${M.slabBotMid} ${eIn},${M.slabBot} Z` }));
+  // 복도: 슬래브 아래에서 물방울까지
+  for (const [a, b] of [[eIn, eOut], [wIn, wOut]]) {
+    shell.append(sv("path", { d: `M${a},${M.slabBot - 2} L${b},${M.slabBot - 2} L${b},${M.bulbY - M.ry} L${a},${M.bulbY - M.ry} Z` }));
+  }
+  // 물방울: 복도 끝에서 아래로 갈수록 넓어지는 속이 찬 면
+  for (const cx of [M.eX, M.wX]) {
+    const top = M.bulbY - M.ry - 6, bot = M.bulbY + M.ry;
+    shell.append(sv("path", { d:
+      `M${cx - M.pierW},${top}` +
+      ` C${cx - M.rx * 0.8},${top + 14} ${cx - M.rx},${M.bulbY} ${cx - M.rx * 0.74},${bot - 12}` +
+      ` Q${cx - M.rx * 0.6},${bot} ${cx - M.rx * 0.34},${bot}` +
+      ` L${cx + M.rx * 0.34},${bot}` +
+      ` Q${cx + M.rx * 0.6},${bot} ${cx + M.rx * 0.74},${bot - 12}` +
+      ` C${cx + M.rx},${M.bulbY} ${cx + M.rx * 0.8},${top + 14} ${cx + M.pierW},${top} Z` }));
+  }
+  // 게이트 가지
+  const twigs = sv("g", { class: "m-twig" });
+  for (const p of T2_GEO) {
+    if (p.grp === "ep" || p.grp === "wp") {
+      twigs.append(sv("line", { x1: p.edge, y1: p.y, x2: p.x, y2: p.y }));
+    } else if (p.grp === "ef" || p.grp === "wf") {
+      twigs.append(sv("line", { x1: p.ex.toFixed(1), y1: p.ey.toFixed(1), x2: p.x.toFixed(1), y2: p.y.toFixed(1) }));
+    }
+  }
+  svg.append(shell, twigs);
 
-  // AM 운행 구간 (E1↔E2, W1↔W2)
+  // AM 운행 구간 — 도면과 같이 아치 안쪽에 그린다
   const am = sv("g", { class: "m-am" });
-  // 게이트 번호 라벨 바깥쪽으로 빼서 겹치지 않게 한다
-  am.append(sv("line", { x1: 145, y1: 172, x2: 145, y2: 352,
+  const gy = (g) => T2_GEO.find((p) => p.g === g).y;
+  am.append(sv("line", { x1: eOut + 20, y1: gy(276), x2: eOut + 20, y2: gy(280),
     "marker-start": "url(#am-arrow)", "marker-end": "url(#am-arrow)" }));
-  am.append(sv("line", { x1: 855, y1: 172, x2: 855, y2: 342,
+  am.append(sv("line", { x1: wIn - 20, y1: gy(224), x2: wIn - 20, y2: gy(219),
     "marker-start": "url(#am-arrow)", "marker-end": "url(#am-arrow)" }));
-  const amLab = (x, y, t, anchor) => {
+  const amLab = (x, y, anchor) => {
     const n = sv("text", { x, y, class: "m-amlab", "text-anchor": anchor });
-    n.textContent = t;
+    n.textContent = "AM";
     return n;
   };
-  am.append(amLab(137, 267, "AM", "end"));
-  am.append(amLab(863, 262, "AM", "start"));
+  am.append(amLab(eOut + 28, (gy(276) + gy(280)) / 2, "start"));
+  am.append(amLab(wIn - 28, (gy(224) + gy(219)) / 2, "end"));
   svg.append(am);
 
   // 게이트 점
@@ -235,17 +277,21 @@ function renderMap(rows) {
 
     // 도면에 번호가 명시된 구역만 라벨을 단다. 중앙 곡선은 호버로만.
     if (p.show) {
-      let lx = p.x, ly = p.y, anchor = "middle";
-      if (p.grp === "ep") { lx = p.x - 17; ly = p.y + 4; anchor = "end"; }
-      else if (p.grp === "wp") { lx = p.x + 17; ly = p.y + 4; anchor = "start"; }
-      else { lx = p.lx; ly = p.ly; }
-      const t = sv("text", { x: lx.toFixed(1), y: ly.toFixed(1), class: "m-num", "text-anchor": anchor });
+      // 274·275·225 는 슬래브 끝에서 바깥 라벨까지 지시선을 뺀다
+      if (p.grp === "c") {
+        node.append(sv("line", { x1: p.x.toFixed(1), y1: p.y.toFixed(1),
+          x2: (p.lx + (p.anchor === "end" ? 5 : -5)).toFixed(1), y2: p.ly - 4, class: "m-lead" }));
+      }
+      const t = sv("text", { x: p.lx.toFixed(1), y: p.ly.toFixed(1),
+        class: "m-num", "text-anchor": p.anchor });
       t.textContent = p.g;
       node.append(t);
     }
     if (AM_STOPS[p.g]) {
-      const t = sv("text", { class: "m-amtag", "text-anchor": p.grp === "ep" ? "start" : "end",
-        x: (p.grp === "ep" ? p.x + 15 : p.x - 15).toFixed(1), y: (p.y - 9).toFixed(1) });
+      // 도면과 같이 복도 위에 얹힌 빨간 배지
+      const bx = (p.grp === "ep" ? M.eX : M.wX);
+      node.append(sv("rect", { x: bx - 15, y: p.y - 9, width: 30, height: 18, rx: 4, class: "m-ambadge" }));
+      const t = sv("text", { class: "m-amtag", "text-anchor": "middle", x: bx, y: p.y + 5 });
       t.textContent = AM_STOPS[p.g];
       node.append(t);
     }
@@ -264,7 +310,7 @@ function renderMap(rows) {
   svg.append(gg);
 
   // 중앙 곡선 캡션 — 개별 위치가 추정임을 도면 안에 명시한다
-  const cap = sv("text", { x: 500, y: 168, class: "m-cap", "text-anchor": "middle" });
+  const cap = sv("text", { x: 500, y: 150, class: "m-cap", "text-anchor": "middle" });
   cap.textContent = "중앙 (225~275) — 개별 위치는 추정";
   svg.append(cap);
 
