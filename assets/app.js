@@ -10,7 +10,7 @@ const el = (tag, cls, txt) => {
 };
 
 const S = {
-  airports: {}, airlines: {}, zones: null,
+  airports: {}, airlines: {}, zones: null, geo: null,
   days: [], flights: [],
   zoneFilter: null, gateFilter: null,
 };
@@ -93,11 +93,10 @@ function visible() {
   });
 }
 
-/* ── T2 평면도 ───────────────────────────────────────
-   공항 공식 안내도(제2여객터미널 3F)의 역U자 배치를 옮긴 것이다.
-   좌우 부두·부채꼴의 번호는 도면에 명시돼 있으나, 중앙 곡선(225~275)은
-   도면에 주기장만 그려져 있어 개별 위치가 추정이다. 따라서 중앙 게이트는
-   번호를 표시하지 않고 호버로만 노출한다.                             */
+/* ── 터미널 평면도 ───────────────────────────────────
+   data/geo.json (OpenStreetMap 추출) 의 건물 외곽선과 게이트 좌표를
+   그대로 투영해 그린다. 손으로 그린 도형이 아니라 실측 좌표다.
+   좌표는 [경도, 위도] 순서이고, 지리 방위 기준이라 오른쪽이 동쪽이다.   */
 
 const SVGNS = "http://www.w3.org/2000/svg";
 const sv = (tag, attrs) => {
@@ -107,90 +106,73 @@ const sv = (tag, attrs) => {
 };
 
 const AM_STOPS = { 276: "E1", 280: "E2", 224: "W1", 219: "W2" };
-const rad = (d) => d * Math.PI / 180;
+const AM_LEGS = [["276", "280"], ["224", "219"]];
+const VB_W = 1000, VB_PAD = 58;
 
-/* 공식 안내도(am-map1-s.jpg)의 비율을 따른다. 실제 도면은 가로로 길고
-   세로가 짧다: 상단 콘코스는 폭의 1/20 두께인 거의 평평한 슬래브,
-   부두는 폭이 있는 복도, 부두 끝은 속이 찬 물방울에서 가지가 뻗는다. */
-const M = {
-  pierW: 17,                       // 복도 반폭
-  eX: 210, wX: 790,                // 좌우 복도 중심
-  slabTop: 42, slabBot: 88,        // 슬래브 상·하단 (양 끝 기준)
-  slabTopMid: 26, slabBotMid: 60,  // 곡선 제어점 (가운데가 살짝 올라간 완만한 활)
-  pierTop: 112, pierBot: 340,      // 부두 게이트 첫·끝 y
-  stub: 17, dotOut: 0, labOut: 12, // 가지 길이와 라벨 간격
-  bulbY: 398, rx: 54, ry: 44,      // 물방울
-  fanA0: 193, fanA1: -13,          // 가지 방사 각도 (바깥 위 → 아래 → 안쪽)
-};
-const curveY = (t, a, mid) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * mid + t * t * a;
-const curveX = (t) => (1 - t) * (1 - t) * (M.eX - M.pierW) + 2 * (1 - t) * t * 500 + t * t * (M.wX + M.pierW);
+/* 위경도를 평면에 올린다. 한국 위도에서 경도 1도는 위도 1도보다 짧으므로
+   cos(중심위도) 로 가로를 보정하지 않으면 건물이 옆으로 늘어난다.
+   터미널마다 독립적으로 bounding box 를 잡는다. 셋은 서로 멀어서
+   한 좌표계에 놓으면 각각이 점처럼 작아진다. */
+function projector(terminal) {
+  const geo = S.geo.terminals[terminal];
+  if (!geo) return null;
+  const gates = terminalGates(terminal);
+  const pts = geo.ring.concat(gates.map((g) => g.ll));
+  const k = Math.cos(pts.reduce((s, p) => s + p[1], 0) / pts.length * Math.PI / 180);
+  const xs = pts.map((p) => p[0] * k), ys = pts.map((p) => -p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const bw = x1 - x0 || 1, bh = y1 - y0 || 1;
 
-function buildT2Geo() {
-  const p = [];
-  // 중앙 콘코스 225~275: 슬래브 중앙선을 따라. 왼쪽 275 → 오른쪽 225.
-  // 274·275·225 는 도면에 번호가 표기돼 있으므로 바깥쪽에 라벨을 단다.
-  for (let i = 0; i <= 50; i++) {
-    const t = i / 50, g = 275 - i;
-    const pt = { g, grp: "c", show: false, x: curveX(t),
-      y: (curveY(t, M.slabTop, M.slabTopMid) + curveY(t, M.slabBot, M.slabBotMid)) / 2 };
-    const outE = M.eX - M.pierW - M.stub - M.labOut;
-    const outW = M.wX + M.pierW + M.stub + M.labOut;
-    if (g === 275) Object.assign(pt, { show: true, lx: outE, ly: 44, anchor: "end" });
-    if (g === 274) Object.assign(pt, { show: true, lx: outE, ly: 64, anchor: "end" });
-    if (g === 225) Object.assign(pt, { show: true, lx: outW, ly: 44, anchor: "start" });
-    p.push(pt);
-  }
-
-  // 부두: 게이트는 복도 바깥쪽으로 짧게 튀어나온 가지 끝에 붙는다
-  const pier = (g, i, n, side) => {
-    const y = M.pierTop + i * (M.pierBot - M.pierTop) / (n - 1);
-    const edge = side === "e" ? M.eX - M.pierW : M.wX + M.pierW;
-    const x = side === "e" ? edge - M.stub : edge + M.stub;
-    return { g, grp: side === "e" ? "ep" : "wp", side, show: true, x, y, edge,
-      lx: side === "e" ? x - M.labOut : x + M.labOut, ly: y + 4,
-      anchor: side === "e" ? "end" : "start" };
+  const H = Math.max(420, Math.min(820, Math.round(VB_W * bh / bw)));
+  const s = Math.min((VB_W - 2 * VB_PAD) / bw, (H - 2 * VB_PAD) / bh);
+  const ox = (VB_W - bw * s) / 2, oy = (H - bh * s) / 2;
+  return {
+    H,
+    at: (ll) => [ox + (ll[0] * k - x0) * s, oy + (-ll[1] - y0) * s],
+    center: [VB_W / 2, H / 2],
   };
-  for (let i = 0; i < 7; i++) p.push(pier(276 + i, i, 7, "e"));
-  for (let i = 0; i < 9; i++) p.push(pier(224 - i, i, 9, "w"));
-
-  // 물방울에서 방사하는 가지. 동편은 바깥(왼쪽) 위 → 아래 → 안쪽(오른쪽).
-  const fan = (g, i, n, cx, side) => {
-    const span = M.fanA0 - M.fanA1;
-    const a = rad(side === "e" ? M.fanA0 - i * span / (n - 1) : M.fanA1 + i * span / (n - 1));
-    const co = Math.cos(a), si = Math.sin(a);
-    const at = (k) => ({ x: cx + (M.rx + k) * co, y: M.bulbY + (M.ry + k) * si });
-    const root = at(-4), tip = at(M.stub), lab = at(M.stub + M.labOut + 5);
-    return { g, grp: side === "e" ? "ef" : "wf", side, show: true,
-      x: tip.x, y: tip.y, ex: root.x, ey: root.y, lx: lab.x, ly: lab.y + 4, anchor: "middle" };
-  };
-  for (let i = 0; i < 9; i++) p.push(fan(283 + i, i, 9, M.eX, "e"));
-  for (let i = 0; i < 8; i++) p.push(fan(215 - i, i, 8, M.wX, "w"));
-  return p;
 }
 
-const T2_GEO = buildT2Geo();
+function terminalGates(terminal) {
+  const range = S.zones.terminals[terminal];
+  if (!range || !S.geo) return [];
+  const [lo, hi] = range.gateRange;
+  const out = [];
+  for (const [g, ll] of Object.entries(S.geo.gates)) {
+    const n = parseInt(g, 10);
+    if (n >= lo && n <= hi) out.push({ g, n, ll });
+  }
+  return out.sort((a, b) => a.n - b.n);
+}
 
 function renderMap(rows) {
   const wrap = $("#map-wrap");
-  const isT2 = $("#sel-term").value === "T2";
-  $("#spine-hint").textContent = isT2
+  const term = $("#sel-term").value;
+  const isMap = term !== "ALL" && S.geo && S.geo.terminals[term];
+  $("#spine-hint").textContent = isMap
     ? "평면도의 점 크기와 막대 높이는 모두 게이트별 편수입니다. 게이트나 구역을 누르면 아래 목록이 좁혀집니다."
     : "막대 높이는 게이트별 편수입니다. 구역이나 게이트를 누르면 아래 목록이 좁혀집니다.";
-  if (!isT2) { wrap.hidden = true; return; }
+  if (!isMap) { wrap.hidden = true; return; }
   wrap.hidden = false;
 
   const host = $("#map");
   host.replaceChildren();
 
   const byGate = new Map();
-  for (const f of rows) byGate.set(String(parseInt(f.gate, 10)), (byGate.get(String(parseInt(f.gate, 10))) || 0) + 1);
+  for (const f of rows) {
+    const k = String(parseInt(f.gate, 10));
+    byGate.set(k, (byGate.get(k) || 0) + 1);
+  }
   const peak = Math.max(1, ...byGate.values());
 
+  const P = projector(term);
+  const gates = terminalGates(term);
   const svg = sv("svg", {
-    viewBox: "0 0 1000 500",
+    viewBox: `0 0 ${VB_W} ${P.H}`,
     preserveAspectRatio: "xMidYMid meet",
     role: "img",
-    "aria-label": "제2여객터미널 게이트 배치도",
+    "aria-label": `${S.zones.terminals[term].label} 게이트 배치도`,
   });
 
   const defs = sv("defs");
@@ -200,104 +182,87 @@ function renderMap(rows) {
   defs.append(mk);
   svg.append(defs);
 
-  // 터미널 본체: 슬래브 + 복도 + 물방울을 면으로 그린다
-  const shell = sv("g", { class: "m-shell" });
-  const eIn = M.eX - M.pierW, eOut = M.eX + M.pierW;
-  const wIn = M.wX - M.pierW, wOut = M.wX + M.pierW;
-  // 슬래브: 위·아래 모서리가 모두 완만한 활인 가로로 긴 판
-  shell.append(sv("path", { d:
-    `M${eIn},${M.slabTop} Q500,${M.slabTopMid} ${wOut},${M.slabTop}` +
-    ` L${wOut},${M.slabBot} Q500,${M.slabBotMid} ${eIn},${M.slabBot} Z` }));
-  // 복도: 슬래브 아래에서 물방울까지
-  for (const [a, b] of [[eIn, eOut], [wIn, wOut]]) {
-    shell.append(sv("path", { d: `M${a},${M.slabBot - 2} L${b},${M.slabBot - 2} L${b},${M.bulbY - M.ry} L${a},${M.bulbY - M.ry} Z` }));
-  }
-  // 물방울: 복도 끝에서 아래로 갈수록 넓어지는 속이 찬 면
-  for (const cx of [M.eX, M.wX]) {
-    const top = M.bulbY - M.ry - 6, bot = M.bulbY + M.ry;
-    shell.append(sv("path", { d:
-      `M${cx - M.pierW},${top}` +
-      ` C${cx - M.rx * 0.8},${top + 14} ${cx - M.rx},${M.bulbY} ${cx - M.rx * 0.74},${bot - 12}` +
-      ` Q${cx - M.rx * 0.6},${bot} ${cx - M.rx * 0.34},${bot}` +
-      ` L${cx + M.rx * 0.34},${bot}` +
-      ` Q${cx + M.rx * 0.6},${bot} ${cx + M.rx * 0.74},${bot - 12}` +
-      ` C${cx + M.rx},${M.bulbY} ${cx + M.rx * 0.8},${top + 14} ${cx + M.pierW},${top} Z` }));
-  }
-  // 게이트 가지
-  const twigs = sv("g", { class: "m-twig" });
-  for (const p of T2_GEO) {
-    if (p.grp === "ep" || p.grp === "wp") {
-      twigs.append(sv("line", { x1: p.edge, y1: p.y, x2: p.x, y2: p.y }));
-    } else if (p.grp === "ef" || p.grp === "wf") {
-      twigs.append(sv("line", { x1: p.ex.toFixed(1), y1: p.ey.toFixed(1), x2: p.x.toFixed(1), y2: p.y.toFixed(1) }));
+  // 건물 외곽선
+  svg.append(sv("polygon", { class: "m-ring",
+    points: S.geo.terminals[term].ring.map((ll) => P.at(ll).map((v) => v.toFixed(1)).join(",")).join(" ") }));
+
+  // AM 운행 구간 — T2 에서만. 좌표는 geo.json 의 게이트 위치를 그대로 쓴다.
+  if (term === "T2") {
+    const am = sv("g", { class: "m-am" });
+    for (const [a, b] of AM_LEGS) {
+      const ga = S.geo.gates[a], gb = S.geo.gates[b];
+      if (!ga || !gb) continue;
+      const [x1, y1] = P.at(ga), [x2, y2] = P.at(gb);
+      am.append(sv("line", { x1: x1.toFixed(1), y1: y1.toFixed(1), x2: x2.toFixed(1), y2: y2.toFixed(1),
+        "marker-start": "url(#am-arrow)", "marker-end": "url(#am-arrow)" }));
+      const t = sv("text", { class: "m-amlab", "text-anchor": "middle",
+        x: ((x1 + x2) / 2).toFixed(1), y: ((y1 + y2) / 2 - 6).toFixed(1) });
+      t.textContent = "AM";
+      am.append(t);
     }
+    svg.append(am);
   }
-  svg.append(shell, twigs);
 
-  // AM 운행 구간 — 도면과 같이 아치 안쪽에 그린다
-  const am = sv("g", { class: "m-am" });
-  const gy = (g) => T2_GEO.find((p) => p.g === g).y;
-  am.append(sv("line", { x1: eOut + 20, y1: gy(276), x2: eOut + 20, y2: gy(280),
-    "marker-start": "url(#am-arrow)", "marker-end": "url(#am-arrow)" }));
-  am.append(sv("line", { x1: wIn - 20, y1: gy(224), x2: wIn - 20, y2: gy(219),
-    "marker-start": "url(#am-arrow)", "marker-end": "url(#am-arrow)" }));
-  const amLab = (x, y, anchor) => {
-    const n = sv("text", { x, y, class: "m-amlab", "text-anchor": anchor });
-    n.textContent = "AM";
-    return n;
+  // 실측 좌표라 게이트가 몰린 구간이 있다. 라벨이 겹치면 읽을 수 없으므로
+  // 편수가 많은 쪽부터 자리를 잡고, 겹치는 라벨은 생략한다(호버로 확인 가능).
+  const placed = [];
+  const fits = (x, y, n) => {
+    const w = n.length * 6 + 3, box = [x - w / 2, y - 6, x + w / 2, y + 5];
+    if (placed.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) return false;
+    placed.push(box);
+    return true;
   };
-  am.append(amLab(eOut + 28, (gy(276) + gy(280)) / 2, "start"));
-  am.append(amLab(wIn - 28, (gy(224) + gy(219)) / 2, "end"));
-  svg.append(am);
+  const order = gates.slice().sort((a, b) => (byGate.get(b.g) || 0) - (byGate.get(a.g) || 0));
+  const labelled = new Set();
+  for (const { g, ll } of order) {
+    const [x, y] = P.at(ll);
+    const dx = x - P.center[0], dy = y - P.center[1], d = Math.hypot(dx, dy) || 1;
+    if (fits(x + dx / d * 15, y + dy / d * 15, g)) labelled.add(g);
+  }
 
-  // 게이트 점
+  // 게이트
   const gg = sv("g", { class: "m-gates" });
-  for (const p of T2_GEO) {
-    const key = String(p.g);
-    const c = byGate.get(key) || 0;
-    const on = S.gateFilter === key;
-    // 중앙 곡선은 51개가 좁은 호에 몰려 있다. 반경이 크면 덩어리로 뭉쳐 보이므로
-    // 선형 스케일로 작게 잡고, 편수 차이는 채도로도 함께 표현한다.
-    const r = c ? 2.8 + 4.2 * (c / peak) : 2.2;
+  for (const { g, ll } of gates) {
+    const [x, y] = P.at(ll);
+    const c = byGate.get(g) || 0;
+    const on = S.gateFilter === g;
+    const r = c ? 3 + 4.6 * (c / peak) : 2.4;
+    const stop = AM_STOPS[g];
 
     const node = sv("g", { class: "m-g", tabindex: "0", role: "button",
-      "data-has": c ? "1" : "0", "data-am": AM_STOPS[p.g] ? "1" : "0",
-      "data-on": on ? "1" : "0",
-      "aria-label": `${p.g}번 게이트 ${c}편${AM_STOPS[p.g] ? ` · AM ${AM_STOPS[p.g]}` : ""}` });
+      "data-has": c ? "1" : "0", "data-am": stop ? "1" : "0", "data-on": on ? "1" : "0",
+      "aria-label": `${g}번 게이트 ${c}편${stop ? ` · AM ${stop}` : ""}` });
 
-    node.append(sv("circle", { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 11, class: "m-hit" }));
-    const dot = sv("circle", { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: r.toFixed(1), class: "m-dot" });
-    // 인라인 opacity로 주면 hover·선택 상태 규칙을 이기므로 변수로 넘긴다
+    node.append(sv("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: 11, class: "m-hit" }));
+    const dot = sv("circle", { cx: x.toFixed(1), cy: y.toFixed(1), r: r.toFixed(1), class: "m-dot" });
     if (c) dot.style.setProperty("--o", (0.4 + 0.55 * (c / peak)).toFixed(2));
     node.append(dot);
 
     const ttl = sv("title");
-    ttl.textContent = `${p.g}번 · ${c}편${AM_STOPS[p.g] ? ` · AM ${AM_STOPS[p.g]} 승하차` : ""}`;
+    ttl.textContent = `${g}번 · ${c}편${stop ? ` · AM ${stop} 승하차` : ""}`;
     node.append(ttl);
 
-    // 도면에 번호가 명시된 구역만 라벨을 단다. 중앙 곡선은 호버로만.
-    if (p.show) {
-      // 274·275·225 는 슬래브 끝에서 바깥 라벨까지 지시선을 뺀다
-      if (p.grp === "c") {
-        node.append(sv("line", { x1: p.x.toFixed(1), y1: p.y.toFixed(1),
-          x2: (p.lx + (p.anchor === "end" ? 5 : -5)).toFixed(1), y2: p.ly - 4, class: "m-lead" }));
-      }
-      const t = sv("text", { x: p.lx.toFixed(1), y: p.ly.toFixed(1),
-        class: "m-num", "text-anchor": p.anchor });
-      t.textContent = p.g;
+    // 라벨은 건물 중심에서 바깥쪽으로 밀어낸다
+    if (labelled.has(g)) {
+      const dx = x - P.center[0], dy = y - P.center[1];
+      const d = Math.hypot(dx, dy) || 1;
+      const t = sv("text", { class: "m-num", "text-anchor": "middle",
+        x: (x + dx / d * 15).toFixed(1), y: (y + dy / d * 15 + 3.5).toFixed(1) });
+      t.textContent = g;
       node.append(t);
     }
-    if (AM_STOPS[p.g]) {
-      // 도면과 같이 복도 위에 얹힌 빨간 배지
-      const bx = (p.grp === "ep" ? M.eX : M.wX);
-      node.append(sv("rect", { x: bx - 15, y: p.y - 9, width: 30, height: 18, rx: 4, class: "m-ambadge" }));
-      const t = sv("text", { class: "m-amtag", "text-anchor": "middle", x: bx, y: p.y + 5 });
-      t.textContent = AM_STOPS[p.g];
-      node.append(t);
+
+    if (stop) {
+      node.append(sv("rect", { x: (x - 15).toFixed(1), y: (y - 24).toFixed(1),
+        width: 30, height: 16, rx: 4, class: "m-ambadge" }));
+      const b = sv("text", { class: "m-amtag", "text-anchor": "middle",
+        x: x.toFixed(1), y: (y - 12).toFixed(1) });
+      b.textContent = stop;
+      node.append(b);
     }
 
     const hit = () => {
-      S.gateFilter = S.gateFilter === key ? null : key;
+      S.gateFilter = S.gateFilter === g ? null : g;
       S.zoneFilter = null;
       draw();
     };
@@ -308,19 +273,24 @@ function renderMap(rows) {
     gg.append(node);
   }
   svg.append(gg);
-
-  // 중앙 곡선 캡션 — 개별 위치가 추정임을 도면 안에 명시한다
-  const cap = sv("text", { x: 500, y: 150, class: "m-cap", "text-anchor": "middle" });
-  cap.textContent = "중앙 (225~275) — 개별 위치는 추정";
-  svg.append(cap);
-
   host.append(svg);
 
-  const used = T2_GEO.filter((p) => byGate.get(String(p.g))).length;
-  $("#map-cap").textContent =
-    `점 크기는 편수에 비례합니다. 편수 0인 게이트는 흐리게 표시했습니다 (이날 운항 ${used}/${T2_GEO.length}개). ` +
-    `좌우 부두와 부채꼴 번호는 공항 공식 안내도를 따랐고, 중앙 곡선의 개별 게이트 위치는 번호 순서에 따른 추정입니다. ` +
-    `빨간 표시는 AM 승하차지점과 운행 구간입니다.`;
+  // 좌표가 없는 게이트는 지어내지 않는다. 그날 실제로 편이 있는 번호만 알린다.
+  const [lo, hi] = S.zones.terminals[term].gateRange;
+  const missing = [...byGate.keys()]
+    .filter((g) => +g >= lo && +g <= hi && !S.geo.gates[g])
+    .sort((a, b) => +a - +b);
+
+  const cap = $("#map-cap");
+  cap.replaceChildren();
+  const used = gates.filter((x) => byGate.get(x.g)).length;
+  cap.append(el("span", null,
+    `점 크기는 편수에 비례합니다. 편수 0인 게이트는 흐리게 표시했습니다 (이날 운항 ${used}/${gates.length}개).`));
+  cap.append(el("span", "m-warn", "지리 방위 기준(오른쪽이 동쪽). 공항 안내도와 좌우가 반대입니다."));
+  if (missing.length) {
+    cap.append(el("span", "m-warn", `위치 정보 없음: ${missing.join(", ")}`));
+  }
+  cap.append(el("span", "m-src", "건물 윤곽·게이트 위치: © OpenStreetMap contributors (ODbL)"));
 }
 
 /* ── 렌더: 게이트 배치 ───────────────────────────────── */
@@ -702,11 +672,11 @@ async function loadDay(day) {
 
 async function boot() {
   try {
-    const [ap, al, zn, idx] = await Promise.all([
+    const [ap, al, zn, ge, idx] = await Promise.all([
       j("data/airports.json"), j("data/airlines.json"),
-      j("data/zones.json"), j("data/index.json"),
+      j("data/zones.json"), j("data/geo.json"), j("data/index.json"),
     ]);
-    S.airports = ap; S.airlines = al; S.zones = zn;
+    S.airports = ap; S.airlines = al; S.zones = zn; S.geo = ge;
     S.days = idx.days.slice().sort().reverse();
 
     if (!S.days.length) {

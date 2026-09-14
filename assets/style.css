@@ -65,14 +65,14 @@ section{margin-bottom:34px}
   font-size:.85rem;color:var(--dim);
 }
 
-/* T2 평면도 */
+/* 터미널 평면도 */
 #map-wrap{margin:0 0 22px;padding:0}
 #map svg{display:block;width:100%;height:auto;overflow:visible}
-#map-cap{margin-top:8px;font-size:.78rem;color:var(--dim);line-height:1.5}
+#map-cap{margin-top:8px;font-size:.78rem;color:var(--dim);line-height:1.5;display:flex;flex-direction:column;gap:2px}
+.m-warn{color:var(--mark)}
+.m-src{opacity:.85}
 
-.m-shell path,.m-shell ellipse{fill:var(--rule);fill-opacity:.42;stroke:var(--rule);stroke-width:1.2}
-.m-twig line{stroke:var(--rule);stroke-width:5;stroke-linecap:round}
-.m-lead{stroke:var(--rule);stroke-width:1}
+.m-ring{fill:var(--rule);fill-opacity:.38;stroke:var(--dim);stroke-opacity:.5;stroke-width:1.2;stroke-linejoin:round}
 .m-am line{stroke:var(--mark);stroke-width:1.6;stroke-dasharray:5 4;opacity:.85}
 .m-amlab{fill:var(--mark);font-size:12px;font-weight:600;letter-spacing:.04em}
 .m-ambadge{fill:var(--mark)}
@@ -87,7 +87,7 @@ section{margin-bottom:34px}
 .m-g:focus{outline:none}
 .m-g:focus-visible .m-hit{fill:none;stroke:var(--ink);stroke-width:1.5}
 
-.m-num{fill:var(--dim);font-size:11.5px}
+.m-num{fill:var(--dim);font-size:10px}
 .m-g[data-has="1"] .m-num{fill:var(--ink)}
 .m-g[data-on="1"] .m-num{font-weight:700}
 .m-amtag{fill:var(--panel);font-size:11px;font-weight:700}
