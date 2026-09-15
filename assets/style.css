@@ -58,6 +58,13 @@ main{padding-block:26px 40px}
 section{margin-bottom:34px}
 .hint{color:var(--dim);font-size:.8rem;margin-bottom:12px}
 
+/* 로딩 표시 */
+.loading{
+  padding:10px 12px;background:var(--panel);border:1px solid var(--rule);
+  border-left:3px solid var(--sea);border-radius:3px;
+  font-size:.85rem;color:var(--dim);margin-bottom:18px;
+}
+
 /* 미확정 날짜 안내 */
 .date-note{
   margin-top:10px;padding:8px 12px;background:var(--panel);

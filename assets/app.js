@@ -710,6 +710,7 @@ function renderGates(rows) {
 
 /* 날짜는 전부 로컬 기준으로 다룬다. toISOString() 은 UTC라 한국(UTC+9)에서
    00:00~08:59 사이에 열면 하루 전 날짜가 나온다. */
+const KO_DOW = "일월화수목금토";
 const pad2 = (n) => String(n).padStart(2, "0");
 function localToday() {
   const n = new Date();
@@ -723,7 +724,6 @@ function dayOffset(d) {
 /* 게이트·터미널은 운항 1~2일 전에 확정된다. D+2 이후는 API가 잠정값을 준다.
    실측: D+2 이후는 게이트 배정률 0%대이고, T1 편의 약 13%가 탑승동으로 기록된다. */
 const isTentative = (d) => dayOffset(d) >= 2;
-const KO_DOW = "일월화수목금토";
 const dowOf = (d) => KO_DOW[new Date(d + "T00:00:00").getDay()];
 
 function renderDateNote() {
@@ -755,8 +755,16 @@ async function loadDay(day) {
   S.flights = blob.flights.map(enrich);
 }
 
+/* 당일 운항 파일이 750KB 안팎이라 모바일에서는 몇 초가 걸린다.
+   그동안 화면이 비어 있지 않도록 표시한다. */
+function setBusy(on) {
+  const n = $("#loading");
+  if (n) n.hidden = !on;
+  $("main").setAttribute("aria-busy", on ? "true" : "false");
+}
 
 async function boot() {
+  setBusy(true);
   try {
     const [ap, al, zn, ge, idx] = await Promise.all([
       j("data/airports.json"), j("data/airlines.json"),
@@ -784,7 +792,8 @@ async function boot() {
 
     sel.onchange = async () => {
       S.zoneFilter = null; S.gateFilter = null;
-      await loadDay(sel.value);
+      setBusy(true);
+      try { await loadDay(sel.value); } finally { setBusy(false); }
       draw();
     };
     for (const id of ["#sel-term", "#sel-dir", "#sel-share"]) {
@@ -803,6 +812,8 @@ async function boot() {
   } catch (e) {
     console.error(e);
     $("#gates").append(el("div", "empty", `데이터를 불러오지 못했습니다: ${e.message}`));
+  } finally {
+    setBusy(false);
   }
 }
 
