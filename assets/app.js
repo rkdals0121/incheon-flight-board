@@ -723,6 +723,8 @@ function dayOffset(d) {
 /* 게이트·터미널은 운항 1~2일 전에 확정된다. D+2 이후는 API가 잠정값을 준다.
    실측: D+2 이후는 게이트 배정률 0%대이고, T1 편의 약 13%가 탑승동으로 기록된다. */
 const isTentative = (d) => dayOffset(d) >= 2;
+const KO_DOW = "일월화수목금토";
+const dowOf = (d) => KO_DOW[new Date(d + "T00:00:00").getDay()];
 
 function renderDateNote() {
   const note = $("#date-note");
@@ -768,10 +770,15 @@ async function boot() {
       return;
     }
 
+    // 확정된 날짜를 최신순으로 먼저, 미확정 날짜를 가까운 순으로 뒤에 둔다
     const sel = $("#sel-date");
-    for (const d of S.days) sel.append(new Option(d, d));
+    const firm = S.days.filter((d) => !isTentative(d)).sort().reverse();
+    const soft = S.days.filter(isTentative).sort();
+    for (const d of firm.concat(soft)) {
+      sel.append(new Option(`${d} (${dowOf(d)})${isTentative(d) ? " · 미확정" : ""}`, d));
+    }
     const today = localToday();
-    sel.value = S.days.includes(today) ? today : S.days[0];
+    sel.value = S.days.includes(today) ? today : firm[0] || S.days[0];
 
     await loadDay(sel.value);
 
