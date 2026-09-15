@@ -708,17 +708,27 @@ function renderGates(rows) {
 
 /* ── 흐름 ───────────────────────────────────────────── */
 
-/* 게이트·터미널은 운항 1~2일 전에 확정된다. 그 전 날짜는 API가 잠정값을 준다.
+/* 날짜는 전부 로컬 기준으로 다룬다. toISOString() 은 UTC라 한국(UTC+9)에서
+   00:00~08:59 사이에 열면 하루 전 날짜가 나온다. */
+const pad2 = (n) => String(n).padStart(2, "0");
+function localToday() {
+  const n = new Date();
+  return `${n.getFullYear()}-${pad2(n.getMonth() + 1)}-${pad2(n.getDate())}`;
+}
+function dayOffset(d) {
+  const n = new Date();
+  const today = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  return Math.round((new Date(d + "T00:00:00") - today) / 86400000);
+}
+/* 게이트·터미널은 운항 1~2일 전에 확정된다. D+2 이후는 API가 잠정값을 준다.
    실측: D+2 이후는 게이트 배정률 0%대이고, T1 편의 약 13%가 탑승동으로 기록된다. */
+const isTentative = (d) => dayOffset(d) >= 2;
+
 function renderDateNote() {
   const note = $("#date-note");
   const d = $("#sel-date").value;
   if (!d) { note.hidden = true; return; }
-  const sel = new Date(d + "T00:00:00");
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diff = Math.round((sel - today) / 86400000);
-  if (diff >= 2) {
+  if (isTentative(d)) {
     note.textContent = "게이트·터미널 정보가 확정되지 않은 날짜입니다.";
     note.hidden = false;
   } else {
@@ -743,6 +753,7 @@ async function loadDay(day) {
   S.flights = blob.flights.map(enrich);
 }
 
+
 async function boot() {
   try {
     const [ap, al, zn, ge, idx] = await Promise.all([
@@ -759,7 +770,7 @@ async function boot() {
 
     const sel = $("#sel-date");
     for (const d of S.days) sel.append(new Option(d, d));
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localToday();
     sel.value = S.days.includes(today) ? today : S.days[0];
 
     await loadDay(sel.value);
