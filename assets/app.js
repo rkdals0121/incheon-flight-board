@@ -685,9 +685,50 @@ function appendPending(host) {
   host.append(panel);
 }
 
+/* ── 내 편 ───────────────────────────────────────────
+   공항에서 자기 편을 매번 검색하지 않도록 목록 맨 위에 고정한다. 이 브라우저에만
+   저장하며, 저장소를 쓸 수 없는 환경(사생활 보호 모드 등)에서는 이번 방문 동안만
+   유지된다. 출발·도착은 따로 고정한다. */
+const PIN_KEY = "icn-board:pins";
+let pinsMem = null;
+function loadPins() {
+  if (pinsMem) return pinsMem;
+  try { pinsMem = new Set(JSON.parse(localStorage.getItem(PIN_KEY) || "[]")); }
+  catch (e) { pinsMem = new Set(); }
+  return pinsMem;
+}
+const pinKey = (f) => `${f.dir}|${f.flight}`;
+const isPinned = (f) => loadPins().has(pinKey(f));
+function togglePin(f) {
+  const s = loadPins();
+  if (s.has(pinKey(f))) s.delete(pinKey(f)); else s.add(pinKey(f));
+  try { localStorage.setItem(PIN_KEY, JSON.stringify([...s])); } catch (e) { /* 저장 불가 시 메모리에만 */ }
+  renderGates(visible());
+}
+
+// 터미널·구역·게이트·검색 조건과 무관하게 이 날짜·방향의 고정 편을 보여준다
+function renderPins(host) {
+  const s = loadPins();
+  const dir = $("#sel-dir").value;
+  if (![...s].some((k) => k.startsWith(dir + "|"))) return;
+  const mine = S.flights.filter((f) => f.dir === dir && f.codeshare !== "Slave" && s.has(pinKey(f)))
+    .sort((a, b) => effTime(a).localeCompare(effTime(b)));
+  const wrap = el("div", "pins");
+  wrap.append(el("p", "pins-head", mine.length
+    ? `내 편 ${mine.length}`
+    : `내 편 · 이 날짜 ${dir === "D" ? "출발" : "도착"}에는 고정한 편이 없습니다`));
+  if (mine.length) {
+    const panel = el("div", "timeline");
+    for (const f of mine) panel.append(flightRow(f, dir, true));
+    wrap.append(panel);
+  }
+  host.append(wrap);
+}
+
 function renderGates(rows) {
   const host = $("#gates");
   host.replaceChildren();
+  renderPins(host);
 
   if (!rows.length) {
     host.append(el("div", "empty", emptyReason()));
@@ -818,7 +859,15 @@ function flightRow(f, dir, withGate) {
     if (z && z.am) g.dataset.am = "1";
     r.append(g);
   }
-  const fn = el("div", "fl-f", f.flight);
+  const fn = el("div", "fl-f");
+  const pinned = isPinned(f);
+  const pin = el("button", "pin", pinned ? "★" : "☆");
+  pin.type = "button";
+  pin.setAttribute("aria-pressed", String(pinned));
+  pin.setAttribute("aria-label", `${f.flight} ${pinned ? "내 편에서 빼기" : "내 편으로 고정"}`);
+  pin.title = pinned ? "내 편에서 빼기" : "내 편으로 고정";
+  pin.onclick = (e) => { e.stopPropagation(); togglePin(f); };
+  fn.append(pin, document.createTextNode(f.flight));
   if (f.shares && f.shares.length) {
     const cs = el("small", "fl-cs", `+${f.shares.length}`);
     cs.title = `공동운항 ${f.shares.join(", ")}`;
