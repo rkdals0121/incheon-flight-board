@@ -1160,13 +1160,23 @@ async function boot() {
       return;
     }
 
-    // 확정된 날짜를 최신순으로 먼저, 미확정 날짜를 가까운 순으로 뒤에 둔다
+    // 날짜는 매일 하나씩 늘어난다. API 창(D-3~D+6) 안의 날짜를 먼저 두고, 그보다
+    // 오래된 날짜는 "지난 기록" 으로 따로 묶어 목록이 끝없이 길어 보이지 않게 한다.
     const sel = $("#sel-date");
     const firm = S.days.filter((d) => !isTentative(d)).sort().reverse();
     const soft = S.days.filter(isTentative).sort();
-    for (const d of firm.concat(soft)) {
-      sel.append(new Option(`${d} (${dowOf(d)})${isTentative(d) ? " · 미확정" : ""}`, d));
-    }
+    const recent = firm.filter((d) => dayOffset(d) >= -3);
+    const older = firm.filter((d) => dayOffset(d) < -3);
+    const group = (label, days) => {
+      if (!days.length) return;
+      const g = document.createElement("optgroup");
+      g.label = label;
+      for (const d of days) g.append(new Option(`${d} (${dowOf(d)})${isTentative(d) ? " · 미확정" : ""}`, d));
+      sel.append(g);
+    };
+    group("최근", recent);
+    group("예정 · 게이트 미확정", soft);
+    group(`지난 기록 (${older.length}일)`, older);
     const today = localToday();
     // 오늘 파일이 없으면(수집 실패 등) 오늘 이전 중 가장 가까운 날짜. 확정 날짜 최신은 내일일 수 있다.
     const before = S.days.filter((d) => d <= today).sort();
