@@ -837,9 +837,18 @@ function flightRow(f, dir, withGate) {
   if (hit) d.append(el("small", "fl-hit", `${hit} 공동운항`));
   r.append(d);
 
+  const tags = el("div", "fl-tags");
+  // 도착편 마중에는 출구와 수하물 수취대가 가장 필요하다. 확정된 날짜의 도착편에만 값이 있다.
+  if (f.dir === "A" && (f.exit || f.carousel)) {
+    const parts = [];
+    if (f.exit) parts.push(f.exit === "국내선" ? "국내선 출구" : `출구 ${f.exit}`);
+    if (f.carousel) parts.push(`수취대 ${f.carousel}`);
+    tags.append(el("span", "tag tag-arr", parts.join(" · ")));
+  }
   const tag = el("span", "tag", f.km ? `${f.band} ${f.km.toLocaleString()}km` : (f.band || "미분류"));
   if (f.band) tag.dataset.b = f.band;
-  r.append(tag);
+  tags.append(tag);
+  r.append(tags);
 
   r.title = `${dir === "D" ? "출발" : "도착"} ${t} ${withGate ? f.gate + "번 게이트 " : ""}${f.flight} ${f.city}`;
   return r;
