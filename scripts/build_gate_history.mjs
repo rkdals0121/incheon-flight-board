@@ -32,7 +32,8 @@ for (const file of recent) {
   const { flights } = JSON.parse(readFileSync(join(FLIGHTS, file), "utf8"));
   for (const f of flights) {
     if (f.codeshare !== "Master" || !f.gate) continue;
-    const key = `${f.dir}|${f.flight}`;
+    // 같은 편인데 날짜에 따라 편명 끝에 영문 한 글자가 붙기도 한다(KE647Y / KE647). 떼어서 묶는다.
+    const key = `${f.dir}|${f.flight.replace(/(\d)[A-Z]$/, "$1")}`;
     if (!hist.has(key)) hist.set(key, []);
     hist.get(key).push([day, String(f.gate)]);
   }

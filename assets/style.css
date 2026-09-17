@@ -249,7 +249,7 @@ section{margin-bottom:34px}
 .tag[data-b="장거리"]{border-color:var(--sea);color:var(--sea)}
 .tag[data-b="국내"]{border-color:var(--earth);color:var(--earth)}
 .fl-tags{display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap}
-.tag-arr{border-color:var(--ink);color:var(--ink);font-weight:600}
+.tag-key{border-color:var(--ink);color:var(--ink);font-weight:600}
 
 /* 정렬 토글 · 시간순 목록 */
 .sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px 12px;flex-wrap:wrap}
@@ -302,8 +302,8 @@ footer p+p{margin-top:6px}
   .timeline .fl-g{grid-column:2;grid-row:1 / span 2}
   .timeline .fl-f{grid-column:3;grid-row:1}
   .timeline .fl-tags{grid-column:4}
-  /* 좁은 화면에서 칩 두 개가 줄바꿈되면 다시 세 줄이 된다. 도착편은 출구·수취대를 우선하고 거리 구간은 숨긴다. */
-  .tag-arr + .tag{display:none}
+  /* 좁은 화면에서 칩 두 개가 줄바꿈되면 다시 세 줄이 된다. 출구·수취대나 체크인 카운터를 우선하고 거리 구간은 숨긴다. */
+  .tag-key + .tag{display:none}
   .timeline .fl-d{grid-column:3 / -1}
   .timeline .fl-hist{grid-column:3 / -1;grid-row:3}
   .now-line{scroll-margin-top:56px}

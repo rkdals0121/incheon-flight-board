@@ -697,7 +697,10 @@ function loadPins() {
   catch (e) { pinsMem = new Set(); }
   return pinsMem;
 }
-const pinKey = (f) => `${f.dir}|${f.flight}`;
+/* 같은 편이 날짜에 따라 편명 끝에 영문 한 글자가 붙기도 한다(예: KE647Y / KE647, 지난·당일 파일의
+   소수 편). 표시는 그대로 두고, 같은 편인지 비교할 때만 떼어낸다. */
+const flightBase = (s) => String(s || "").replace(/(\d)[A-Z]$/, "$1");
+const pinKey = (f) => `${f.dir}|${flightBase(f.flight)}`;
 const isPinned = (f) => loadPins().has(pinKey(f));
 function togglePin(f) {
   const s = loadPins();
@@ -892,7 +895,11 @@ function flightRow(f, dir, withGate) {
     const parts = [];
     if (f.exit) parts.push(f.exit === "국내선" ? "국내선 출구" : `출구 ${f.exit}`);
     if (f.carousel) parts.push(`수취대 ${f.carousel}`);
-    tags.append(el("span", "tag tag-arr", parts.join(" · ")));
+    tags.append(el("span", "tag tag-key", parts.join(" · ")));
+  }
+  // 출발편은 체크인 카운터. 게이트보다 먼저 확정돼 게이트 미정인 날짜에도 대부분 값이 있다.
+  if (f.dir === "D" && f.checkin) {
+    tags.append(el("span", "tag tag-key", `체크인 ${f.checkin.trim().replace(/\s+/g, "·")}`));
   }
   const tag = el("span", "tag", f.km ? `${f.band} ${f.km.toLocaleString()}km` : (f.band || "미분류"));
   if (f.band) tag.dataset.b = f.band;
@@ -917,7 +924,7 @@ function flightRow(f, dir, withGate) {
 
 /* 선택한 날짜 이전의 실제 배정 기록 최근 5건 */
 function gateHistory(f) {
-  const raw = S.history && S.history[`${f.dir}|${f.flight}`];
+  const raw = S.history && S.history[`${f.dir}|${flightBase(f.flight)}`];
   if (!raw) return [];
   const sel = String(S.loadedDay || "").slice(2).replace(/-/g, ""); // YYMMDD, 실제로 로드된 날짜 기준
   return raw.split(",").map((x) => x.split(":"))
@@ -1121,15 +1128,19 @@ function showLoadError(day) {
    API의 master 필드가 비어 있어, 방향·예정시각·게이트·목적지가 같은 운항사
    편에 공동운항 편명을 붙인다. 실측 결과 이 조합은 운항사 편마다 유일하다. */
 function linkCodeshares(flights) {
+  // API 의 master(masterflightid)를 우선 쓰고, 없는 옛 파일은 방향·예정시각·게이트·목적지로 짝짓는다
   const key = (f) => `${f.dir}|${f.sched}|${f.gate}|${f.port}`;
-  const masters = new Map();
+  const byKey = new Map(), byFlight = new Map();
   for (const f of flights) {
     f.shares = [];
-    if (f.codeshare === "Master") masters.set(key(f), f);
+    if (f.codeshare === "Master") {
+      byKey.set(key(f), f);
+      byFlight.set(`${f.dir}|${f.flight}`, f);
+    }
   }
   for (const f of flights) {
     if (f.codeshare !== "Slave") continue;
-    const m = masters.get(key(f));
+    const m = (f.master && byFlight.get(`${f.dir}|${f.master}`)) || byKey.get(key(f));
     if (m) m.shares.push(f.flight);
   }
 }
