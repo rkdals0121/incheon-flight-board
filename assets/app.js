@@ -1047,6 +1047,17 @@ async function boot() {
     for (const b of document.querySelectorAll("#sort-toggle button")) {
       b.onclick = () => { S.sort = b.dataset.sort; draw(); };
     }
+    // 조건이 URL 에 담겨 있으니 링크만 넘기면 같은 화면이 열린다
+    $("#copy-link").onclick = async () => {
+      const btn = $("#copy-link");
+      syncQuery();
+      let ok = false;
+      try { await navigator.clipboard.writeText(location.href); ok = true; } catch (e) { ok = false; }
+      if (!ok) window.prompt("아래 링크를 복사하세요", location.href);
+      btn.textContent = ok ? "복사됨" : "링크 복사";
+      clearTimeout(btn._t);
+      btn._t = setTimeout(() => { btn.textContent = "링크 복사"; }, 1600);
+    };
     $("#jump-now").onclick = () => {
       const line = document.querySelector("#now-line");
       if (line) line.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
