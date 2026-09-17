@@ -683,7 +683,7 @@ function renderGates(rows) {
   // 시간순: 게이트로 묶지 않고 시각 순서대로 한 줄씩, 각 줄에 게이트 번호
   if (S.sort === "time") {
     const list = rows.slice().sort((a, b) =>
-      String(a.sched).localeCompare(String(b.sched)) || a.flight.localeCompare(b.flight));
+      effTime(a).localeCompare(effTime(b)) || String(a.sched).localeCompare(String(b.sched)) || a.flight.localeCompare(b.flight));
     const panel = el("div", "timeline");
     // 오늘이면 지난 편과 남은 편 사이에 현재 시각 구분선을 넣는다
     const today = $("#sel-date").value === localToday();
@@ -747,11 +747,15 @@ function nowStamp() {
   const n = new Date();
   return `${localToday().replace(/-/g, "")}${pad2(n.getHours())}${pad2(n.getMinutes())}`;
 }
+/* 화면에 보이는 시각. 변경 시각을 표시하는 편(EST_MIN 이상 차이)은 그 시각, 나머지는 예정 시각.
+   정렬과 지난 편 판정이 같은 기준을 써야 "지금" 구분선 아래에 지난 편이 섞이지 않는다. */
+function effTime(f) {
+  return estShift(f) ? String(f.est) : String(f.sched || "");
+}
 function isPast(f) {
   if ($("#sel-date").value !== localToday()) return false;
-  const ok = (s) => /^\d{12}$/.test(String(s || ""));
-  const at = ok(f.est) ? f.est : f.sched;
-  return ok(at) && at < nowStamp();
+  const at = effTime(f);
+  return /^\d{12}$/.test(at) && at < nowStamp();
 }
 function nowLine() {
   const n = new Date();
