@@ -668,7 +668,14 @@ function renderGates(rows) {
     const list = rows.slice().sort((a, b) =>
       String(a.sched).localeCompare(String(b.sched)) || a.flight.localeCompare(b.flight));
     const panel = el("div", "timeline");
-    for (const f of list) panel.append(flightRow(f, dir, true));
+    // 오늘이면 지난 편과 남은 편 사이에 현재 시각 구분선을 넣는다
+    const today = $("#sel-date").value === localToday();
+    let lined = !today;
+    for (const f of list) {
+      if (!lined && !isPast(f)) { panel.append(nowLine()); lined = true; }
+      panel.append(flightRow(f, dir, true));
+    }
+    if (!lined) panel.append(nowLine());
     host.append(panel);
     return;
   }
@@ -718,6 +725,24 @@ function emptyReason() {
   return "해당 조건에 운항 편이 없습니다. 조건을 바꿔 보세요.";
 }
 
+/* 오늘 날짜에서 이미 지난 편. 변경(실제) 시각이 있으면 그것을 기준으로 한다. */
+function nowStamp() {
+  const n = new Date();
+  return `${localToday().replace(/-/g, "")}${pad2(n.getHours())}${pad2(n.getMinutes())}`;
+}
+function isPast(f) {
+  if ($("#sel-date").value !== localToday()) return false;
+  const ok = (s) => /^\d{12}$/.test(String(s || ""));
+  const at = ok(f.est) ? f.est : f.sched;
+  return ok(at) && at < nowStamp();
+}
+function nowLine() {
+  const n = new Date();
+  const line = el("div", "now-line", `지금 ${pad2(n.getHours())}:${pad2(n.getMinutes())}`);
+  line.id = "now-line";
+  return line;
+}
+
 const EST_MIN = 10;
 function estShift(f) {
   const ok = (s) => /^\d{12}$/.test(String(s || ""));
@@ -735,6 +760,7 @@ function estShift(f) {
 
 function flightRow(f, dir, withGate) {
   const r = el("div", "fl");
+  if (isPast(f)) r.classList.add("fl-past");
   const t = f.time ? `${f.time.slice(0, 2)}:${f.time.slice(2)}` : "--:--";
   const tc = el("div", "fl-t", t);
   // API 의 변경(예상·실제) 시각. 대부분 1분 안팎이라 10분 이상 달라진 편만 표시한다.
@@ -921,6 +947,7 @@ function draw() {
     b.setAttribute("aria-pressed", String(b.dataset.sort === S.sort));
   }
   renderGates(rows);
+  $("#jump-now").hidden = !document.querySelector("#now-line");
   const d = $("#sel-date").value;
   $("#meta").textContent = `${d} 기준 ${rows.length}편 표시 · 저장된 날짜 ${S.days.length}일`;
   syncQuery();
@@ -1002,6 +1029,10 @@ async function boot() {
     for (const b of document.querySelectorAll("#sort-toggle button")) {
       b.onclick = () => { S.sort = b.dataset.sort; draw(); };
     }
+    $("#jump-now").onclick = () => {
+      const line = document.querySelector("#now-line");
+      if (line) line.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    };
     $("#reset").onclick = () => {
       S.zoneFilter = null; S.gateFilter = null; S.sort = "gate";
       $("#q").value = "";

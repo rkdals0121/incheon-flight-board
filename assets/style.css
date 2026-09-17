@@ -244,6 +244,13 @@ section{margin-bottom:34px}
 .seg button{font:inherit;font-size:.8rem;color:var(--dim);background:var(--panel);border:0;padding:5px 11px;cursor:pointer}
 .seg button+button{border-left:1px solid var(--rule)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.sec-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sec-tools .ghost{margin-bottom:.45rem;padding:5px 10px;font-size:.8rem}
+.fl-past{opacity:.5}
+.now-line{
+  padding:6px 14px;font-size:.78rem;font-weight:700;color:var(--mark);
+  border-top:2px solid var(--mark);scroll-margin-top:120px;
+}
 .timeline{background:var(--panel);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
 .timeline .fl{grid-template-columns:52px 44px 82px 1fr auto}
 .timeline .fl:first-child{border-top:0}
@@ -266,6 +273,7 @@ footer p+p{margin-top:6px}
   .tag{grid-column:1 / -1;justify-self:start}
   .timeline .fl{grid-template-columns:46px 40px 1fr}
   .timeline .fl-f{grid-column:3}
+  .now-line{scroll-margin-top:56px}
   .band-bars{height:44px}
   /* 막대 84개(T2)가 최소 폭만으로도 화면을 넘는다. 페이지 전체가 밀리지 않게 그래프 안에서만 스크롤한다. */
   .bands{overflow-x:auto;-webkit-overflow-scrolling:touch}
