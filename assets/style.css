@@ -60,6 +60,17 @@ main{padding-block:26px 40px}
 section{margin-bottom:34px}
 .hint{color:var(--dim);font-size:.8rem;margin-bottom:12px}
 
+/* 모바일 조건 요약 바 */
+.sumbar{
+  position:fixed;top:0;left:0;right:0;z-index:30;
+  display:flex;align-items:center;gap:12px;
+  font:inherit;font-size:.85rem;color:var(--ink);text-align:left;
+  background:var(--paper);border:0;border-bottom:1px solid var(--rule);
+  padding:10px var(--pad);cursor:pointer;
+}
+.sumbar-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.sumbar-go{flex:none;font-size:.78rem;color:var(--dim)}
+
 /* 로딩 표시 */
 .loading{
   padding:10px 12px;background:var(--panel);border:1px solid var(--rule);
@@ -250,6 +261,9 @@ footer p+p{margin-top:6px}
   .timeline .fl{grid-template-columns:46px 40px 1fr}
   .timeline .fl-f{grid-column:3}
   .band-bars{height:44px}
+  /* 막대 84개(T2)가 최소 폭만으로도 화면을 넘는다. 페이지 전체가 밀리지 않게 그래프 안에서만 스크롤한다. */
+  .bands{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .band{min-width:auto}
   /* 도면은 비율을 유지한 채 가로 스크롤시킨다. 폭에 맞춰 줄이면 번호가 읽히지 않는다. */
   #map{overflow-x:auto;-webkit-overflow-scrolling:touch}
   #map svg{min-width:600px}

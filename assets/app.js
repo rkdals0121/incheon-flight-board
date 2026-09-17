@@ -819,6 +819,46 @@ function syncQuery() {
   if (next !== location.pathname + location.search) history.replaceState(null, "", next);
 }
 
+/* ── 모바일 조건 요약 바 ──────────────────────────────
+   모바일에서는 조건 영역이 sticky 가 아니라 스크롤로 사라진다. 전체를 붙이면
+   세로 공간을 너무 먹으므로, 조건 영역을 지나치면 한 줄 요약만 상단에 띄운다.
+   누르면 조건 영역으로 돌아간다. */
+const TERM_SHORT = { ALL: "전체", T1: "T1", CONCOURSE: "탑승동", T2: "T2" };
+
+function renderSumbar() {
+  const d = $("#sel-date").value;
+  if (!d) return;
+  const parts = [`${d.slice(5)} (${dowOf(d)})`, TERM_SHORT[$("#sel-term").value],
+    $("#sel-dir").value === "D" ? "출발" : "도착"];
+  if ($("#sel-share").value === "all") parts.push("코드쉐어 포함");
+  if (S.gateFilter) parts.push(`${S.gateFilter}번`);
+  else if (S.zoneFilter) {
+    for (const t of Object.values(S.zones.terminals)) {
+      const z = t.zones.find((x) => x.id === S.zoneFilter);
+      if (z) parts.push(z.label.replace(/\s*\([^)]*\)\s*$/, ""));
+    }
+  }
+  const q = $("#q").value.trim();
+  if (q) parts.push(`"${q}"`);
+  $("#sumbar .sumbar-t").textContent = parts.join(" · ");
+}
+
+function watchControls() {
+  const bar = $("#sumbar"), ctl = $(".controls");
+  const mobile = matchMedia("(max-width:640px)");
+  let passed = false;
+  const update = () => { bar.hidden = !(mobile.matches && passed); };
+  new IntersectionObserver(([e]) => {
+    passed = !e.isIntersecting && e.boundingClientRect.bottom < 0;
+    update();
+  }).observe(ctl);
+  mobile.addEventListener("change", update);
+  bar.onclick = () => {
+    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    ctl.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+  };
+}
+
 function draw() {
   const rows = visible();
   renderDateNote();
@@ -833,6 +873,7 @@ function draw() {
   const d = $("#sel-date").value;
   $("#meta").textContent = `${d} 기준 ${rows.length}편 표시 · 저장된 날짜 ${S.days.length}일`;
   syncQuery();
+  renderSumbar();
 }
 
 async function loadDay(day) {
@@ -897,6 +938,7 @@ async function boot() {
       draw();
     };
 
+    watchControls();
     draw();
   } catch (e) {
     console.error(e);
