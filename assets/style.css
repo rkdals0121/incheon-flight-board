@@ -217,6 +217,18 @@ section{margin-bottom:34px}
 .tag[data-b="장거리"]{border-color:var(--sea);color:var(--sea)}
 .tag[data-b="국내"]{border-color:var(--earth);color:var(--earth)}
 
+/* 정렬 토글 · 시간순 목록 */
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px 12px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden;margin-bottom:.45rem}
+.seg button{font:inherit;font-size:.8rem;color:var(--dim);background:var(--panel);border:0;padding:5px 11px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.timeline{background:var(--panel);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+.timeline .fl{grid-template-columns:52px 44px 82px 1fr auto}
+.timeline .fl:first-child{border-top:0}
+.fl-g{font-weight:600}
+.fl-g[data-am="1"]{color:var(--mark)}
+
 .empty{padding:26px 14px;text-align:center;color:var(--dim);background:var(--panel);
   border:1px dashed var(--rule);border-radius:4px}
 
@@ -231,6 +243,8 @@ footer p+p{margin-top:6px}
   .fl-f{grid-column:2}
   .fl-d{grid-column:1 / -1}
   .tag{grid-column:1 / -1;justify-self:start}
+  .timeline .fl{grid-template-columns:46px 40px 1fr}
+  .timeline .fl-f{grid-column:3}
   .band-bars{height:44px}
   /* 도면은 비율을 유지한 채 가로 스크롤시킨다. 폭에 맞춰 줄이면 번호가 읽히지 않는다. */
   #map{overflow-x:auto;-webkit-overflow-scrolling:touch}

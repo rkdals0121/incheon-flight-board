@@ -13,6 +13,7 @@ const S = {
   airports: {}, airlines: {}, zones: null, geo: null,
   days: [], flights: [],
   zoneFilter: null, gateFilter: null,
+  sort: "gate",   // gate | time
 };
 
 const cache = new Map();
@@ -660,13 +661,24 @@ function renderGates(rows) {
     return;
   }
 
+  const dir = $("#sel-dir").value;
+
+  // 시간순: 게이트로 묶지 않고 시각 순서대로 한 줄씩, 각 줄에 게이트 번호
+  if (S.sort === "time") {
+    const list = rows.slice().sort((a, b) =>
+      String(a.sched).localeCompare(String(b.sched)) || a.flight.localeCompare(b.flight));
+    const panel = el("div", "timeline");
+    for (const f of list) panel.append(flightRow(f, dir, true));
+    host.append(panel);
+    return;
+  }
+
   const by = new Map();
   for (const f of rows) {
     if (!by.has(f.gate)) by.set(f.gate, []);
     by.get(f.gate).push(f);
   }
   const gates = [...by.keys()].sort((a, b) => +a - +b);
-  const dir = $("#sel-dir").value;
 
   for (const g of gates) {
     const list = by.get(g).sort((a, b) => a.time.localeCompare(b.time));
@@ -682,28 +694,36 @@ function renderGates(rows) {
     card.append(head);
 
     const body = el("div", "gate-body");
-    for (const f of list) {
-      const r = el("div", "fl");
-      const t = f.time ? `${f.time.slice(0, 2)}:${f.time.slice(2)}` : "--:--";
-      r.append(el("div", "fl-t", t));
-      r.append(el("div", "fl-f", f.flight));
-
-      const d = el("div", "fl-d");
-      d.append(document.createTextNode(f.city || f.port || "-"));
-      const meta = [f.airlineName, f.country].filter(Boolean).join(" · ");
-      if (meta) d.append(el("small", null, meta));
-      r.append(d);
-
-      const tag = el("span", "tag", f.km ? `${f.band} ${f.km.toLocaleString()}km` : (f.band || "미분류"));
-      if (f.band) tag.dataset.b = f.band;
-      r.append(tag);
-
-      r.title = `${dir === "D" ? "출발" : "도착"} ${t} ${f.flight} ${f.city}`;
-      body.append(r);
-    }
+    for (const f of list) body.append(flightRow(f, dir, false));
     card.append(body);
     host.append(card);
   }
+}
+
+function flightRow(f, dir, withGate) {
+  const r = el("div", "fl");
+  const t = f.time ? `${f.time.slice(0, 2)}:${f.time.slice(2)}` : "--:--";
+  r.append(el("div", "fl-t", t));
+  if (withGate) {
+    const g = el("div", "fl-g", f.gate);
+    const z = zoneOf(f.terminal || termOfGate(f.gate), f.gate);
+    if (z && z.am) g.dataset.am = "1";
+    r.append(g);
+  }
+  r.append(el("div", "fl-f", f.flight));
+
+  const d = el("div", "fl-d");
+  d.append(document.createTextNode(f.city || f.port || "-"));
+  const meta = [f.airlineName, f.country].filter(Boolean).join(" · ");
+  if (meta) d.append(el("small", null, meta));
+  r.append(d);
+
+  const tag = el("span", "tag", f.km ? `${f.band} ${f.km.toLocaleString()}km` : (f.band || "미분류"));
+  if (f.band) tag.dataset.b = f.band;
+  r.append(tag);
+
+  r.title = `${dir === "D" ? "출발" : "도착"} ${t} ${withGate ? f.gate + "번 게이트 " : ""}${f.flight} ${f.city}`;
+  return r;
 }
 
 /* ── 흐름 ───────────────────────────────────────────── */
@@ -756,6 +776,8 @@ function applyQuery() {
   if (share === "master" || share === "all") $("#sel-share").value = share;
   if (q.get("q")) $("#q").value = q.get("q").slice(0, 60);
 
+  if (q.get("sort") === "time") S.sort = "time";
+
   const gate = q.get("gate"), zone = q.get("zone");
   if (gate && /^\d{1,3}$/.test(gate)) {
     S.gateFilter = String(parseInt(gate, 10));
@@ -772,6 +794,7 @@ function syncQuery() {
   if ($("#sel-share").value !== "master") q.set("share", $("#sel-share").value);
   const s = $("#q").value.trim();
   if (s) q.set("q", s);
+  if (S.sort === "time") q.set("sort", "time");
   if (S.gateFilter) q.set("gate", S.gateFilter);
   else if (S.zoneFilter) q.set("zone", S.zoneFilter);
   const next = `${location.pathname}?${q}`;
@@ -785,6 +808,9 @@ function draw() {
   renderSpine(rows);
   renderAM();
   renderZones(rows);
+  for (const b of document.querySelectorAll("#sort-toggle button")) {
+    b.setAttribute("aria-pressed", String(b.dataset.sort === S.sort));
+  }
   renderGates(rows);
   const d = $("#sel-date").value;
   $("#meta").textContent = `${d} 기준 ${rows.length}편 표시 · 저장된 날짜 ${S.days.length}일`;
@@ -843,8 +869,11 @@ async function boot() {
     }
     let t;
     $("#q").oninput = () => { clearTimeout(t); t = setTimeout(draw, 180); };
+    for (const b of document.querySelectorAll("#sort-toggle button")) {
+      b.onclick = () => { S.sort = b.dataset.sort; draw(); };
+    }
     $("#reset").onclick = () => {
-      S.zoneFilter = null; S.gateFilter = null;
+      S.zoneFilter = null; S.gateFilter = null; S.sort = "gate";
       $("#q").value = "";
       $("#sel-term").value = "T2"; $("#sel-dir").value = "D"; $("#sel-share").value = "master";
       draw();
