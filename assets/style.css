@@ -171,6 +171,8 @@ section{margin-bottom:34px}
 .band[data-am="1"] .band-label{border-top-color:var(--mark);color:var(--mark)}
 .band[aria-pressed="true"] .band-label{color:var(--ink);border-top-color:var(--ink);font-weight:600}
 
+.note-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#gates-sec{scroll-margin-top:110px}
 #filter-note{
   margin-top:14px;padding:9px 12px;background:var(--panel);
   border:1px solid var(--rule);border-left:3px solid var(--ink);border-radius:3px;
@@ -274,6 +276,7 @@ footer p+p{margin-top:6px}
   .timeline .fl{grid-template-columns:46px 40px 1fr}
   .timeline .fl-f{grid-column:3}
   .now-line{scroll-margin-top:56px}
+  #gates-sec{scroll-margin-top:56px}
   .band-bars{height:44px}
   /* 막대 84개(T2)가 최소 폭만으로도 화면을 넘는다. 페이지 전체가 밀리지 않게 그래프 안에서만 스크롤한다. */
   .bands{overflow-x:auto;-webkit-overflow-scrolling:touch}

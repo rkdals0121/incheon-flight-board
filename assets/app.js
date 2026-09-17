@@ -444,10 +444,19 @@ function renderSpine(rows) {
       }
     }
     note.append(el("span", null, label));
+    // 걸러진 목록은 평면도·AM 패널·구역 표를 지나 화면 두세 개 아래에 있다.
+    const acts = el("span", "note-acts");
+    const go = el("button", "ghost", `목록 보기 (${rows.length}편)`);
+    go.type = "button";
+    go.onclick = () => {
+      const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      $("#gates-sec").scrollIntoView({ block: "start", behavior: calm ? "auto" : "smooth" });
+    };
     const b = el("button", "ghost", "전체 보기");
     b.type = "button";
     b.onclick = () => { S.zoneFilter = null; S.gateFilter = null; draw(); };
-    note.append(b);
+    acts.append(go, b);
+    note.append(acts);
     note.hidden = false;
   } else {
     note.hidden = true;
