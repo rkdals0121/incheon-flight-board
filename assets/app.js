@@ -88,10 +88,18 @@ function visible({ ignoreQuery = false } = {}) {
     if (S.gateFilter && f.gate !== S.gateFilter) return false;
     if (q) {
       const hay = `${f.flight} ${(f.shares || []).join(" ")} ${f.city} ${f.country} ${f.airlineName} ${f.gate} ${f.port} ${f.band} ${f.alliance}`.toLowerCase();
-      if (!hay.includes(q)) return false;
+      // 티켓에는 "KE 101" 처럼 띄어 쓰는 경우가 많다. 편명끼리는 공백을 무시하고 비교한다.
+      if (!hay.includes(q) && !flightCodeMatch(f, q)) return false;
     }
     return true;
   });
+}
+
+const compact = (s) => String(s || "").toLowerCase().replace(/\s+/g, "");
+function flightCodeMatch(f, q) {
+  const qc = compact(q);
+  if (!qc) return "";
+  return [f.flight, ...(f.shares || [])].find((c) => compact(c).includes(qc)) || "";
 }
 
 /* ── 터미널 평면도 ───────────────────────────────────
@@ -790,8 +798,9 @@ function flightRow(f, dir, withGate) {
   const meta = [f.airlineName, f.country].filter(Boolean).join(" · ");
   if (meta) d.append(el("small", null, meta));
   // 공동운항 편명으로 찾은 경우, 왜 이 편이 나왔는지 보여준다
-  const q = $("#q").value.trim().toLowerCase();
-  const hit = q && !f.flight.toLowerCase().includes(q) && (f.shares || []).find((s) => s.toLowerCase().includes(q));
+  const q = $("#q").value.trim();
+  const code = q && flightCodeMatch(f, q);
+  const hit = code && code !== f.flight ? code : "";
   if (hit) d.append(el("small", "fl-hit", `${hit} 공동운항`));
   r.append(d);
 
