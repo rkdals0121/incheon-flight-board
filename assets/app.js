@@ -1009,7 +1009,24 @@ async function loadDay(day) {
   const blob = await j(`data/flights/${day}.json`);
   S.flights = blob.flights.map(enrich);
   S.collectedAt = blob.collectedAt || "";
+  S.loadedDay = day;
   linkCodeshares(S.flights);
+}
+
+function showLoadError(day) {
+  const n = $("#load-error");
+  if (!day) { n.hidden = true; return; }
+  n.replaceChildren();
+  n.append(el("span", null, `${day} (${dowOf(day)}) 데이터를 불러오지 못했습니다. 네트워크 연결을 확인하세요.`));
+  const b = el("button", "ghost", "다시 시도");
+  b.type = "button";
+  b.onclick = () => {
+    const sel = $("#sel-date");
+    sel.value = day;
+    sel.onchange();
+  };
+  n.append(b);
+  n.hidden = false;
 }
 
 /* 승객은 티켓에 적힌 편명으로 찾는데, 그게 공동운항(코드쉐어) 편명인 경우가
@@ -1066,10 +1083,22 @@ async function boot() {
 
     await loadDay(sel.value);
 
+    // 로드가 실패하면 드롭다운만 새 날짜로 바뀌고 화면은 이전 날짜 데이터를 그대로
+    // 보여줬다. 엉뚱한 날의 게이트를 믿게 되므로 선택을 되돌리고 실패를 알린다.
     sel.onchange = async () => {
+      const want = sel.value, prev = S.loadedDay;
       S.zoneFilter = null; S.gateFilter = null;
       setBusy(true);
-      try { await loadDay(sel.value); } finally { setBusy(false); }
+      try {
+        await loadDay(want);
+        showLoadError(null);
+      } catch (e) {
+        console.error(e);
+        sel.value = prev;
+        showLoadError(want);
+      } finally {
+        setBusy(false);
+      }
       draw();
     };
     for (const id of ["#sel-term", "#sel-dir", "#sel-share"]) {
