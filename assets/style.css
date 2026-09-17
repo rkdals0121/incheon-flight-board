@@ -258,6 +258,8 @@ section{margin-bottom:34px}
 .timeline .fl:first-child{border-top:0}
 .fl-g{font-weight:600}
 .fl-g[data-am="1"]{color:var(--mark)}
+.fl-g[data-none="1"]{font-weight:400;font-size:.78rem;color:var(--dim)}
+.pending-head{margin:18px 0 8px;font-size:.85rem;font-weight:600;color:var(--dim)}
 
 .empty{padding:26px 14px;text-align:center;color:var(--dim);background:var(--panel);
   border:1px dashed var(--rule);border-radius:4px}

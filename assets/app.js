@@ -69,7 +69,7 @@ const top = (arr, n) => {
 
 /* ── 필터 ───────────────────────────────────────────── */
 
-function visible({ ignoreQuery = false } = {}) {
+function visible({ ignoreQuery = false, noGateOnly = false } = {}) {
   const term = $("#sel-term").value;
   const dir = $("#sel-dir").value;
   const share = $("#sel-share").value;
@@ -77,7 +77,8 @@ function visible({ ignoreQuery = false } = {}) {
 
   return S.flights.filter((f) => {
     if (f.dir !== dir) return false;
-    if (!f.gate) return false;
+    // 기본은 게이트가 있는 편만. noGateOnly 는 게이트 미정 편만 (목록 끝 "게이트 미정" 묶음용)
+    if (noGateOnly ? f.gate : !f.gate) return false;
     if (share === "master" && f.codeshare && f.codeshare !== "Master") return false;
     const t = f.terminal || termOfGate(f.gate);
     if (term !== "ALL" && t !== term) return false;
@@ -669,12 +670,28 @@ function renderZones(rows) {
 
 /* ── 렌더: 게이트별 목록 ─────────────────────────────── */
 
+/* 게이트만 없을 뿐 시각·편명·목적지는 있다. 내일은 절반가량, 모레 이후는 전부가
+   게이트 미정이라 그대로 두면 조용히 사라진다. 목록 끝에 시각순으로 붙인다.
+   게이트·구역 필터를 건 상태라면 해당이 없으므로 붙이지 않는다. */
+function appendPending(host) {
+  if (S.gateFilter || S.zoneFilter) return;
+  const pending = visible({ noGateOnly: true })
+    .sort((a, b) => effTime(a).localeCompare(effTime(b)) || a.flight.localeCompare(b.flight));
+  if (!pending.length) return;
+  host.append(el("p", "pending-head", `게이트 미정 ${pending.length}편 · 시각순`));
+  const panel = el("div", "timeline");
+  const dir = $("#sel-dir").value;
+  for (const f of pending) panel.append(flightRow(f, dir, true));
+  host.append(panel);
+}
+
 function renderGates(rows) {
   const host = $("#gates");
   host.replaceChildren();
 
   if (!rows.length) {
     host.append(el("div", "empty", emptyReason()));
+    appendPending(host);
     return;
   }
 
@@ -694,6 +711,7 @@ function renderGates(rows) {
     }
     if (!lined) panel.append(nowLine());
     host.append(panel);
+    appendPending(host);
     return;
   }
 
@@ -724,6 +742,7 @@ function renderGates(rows) {
     card.append(body);
     host.append(card);
   }
+  appendPending(host);
 }
 
 /* 빈 결과의 원인을 알려준다. 대부분은 게이트가 아직 배정되지 않은 날짜다. */
@@ -793,7 +812,8 @@ function flightRow(f, dir, withGate) {
   }
   r.append(tc);
   if (withGate) {
-    const g = el("div", "fl-g", f.gate);
+    const g = el("div", "fl-g", f.gate || "미정");
+    if (!f.gate) g.dataset.none = "1";
     const z = zoneOf(f.terminal || termOfGate(f.gate), f.gate);
     if (z && z.am) g.dataset.am = "1";
     r.append(g);
