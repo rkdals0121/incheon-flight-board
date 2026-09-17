@@ -28,6 +28,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
@@ -62,6 +63,16 @@ def fetch(offset_value, key, timeout=90, tries=4):
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return url, r.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            # 4xx 는 요청이 틀린 것이라 재시도해도 같다. 본문에 사유가 담겨 오므로 돌려준다.
+            if 400 <= e.code < 500:
+                body = e.read().decode("utf-8", "replace")
+                print(f"  [!] HTTP {e.code} 응답 본문: {body[:800]}", file=sys.stderr)
+                return url, body
+            last = e
+            print(f"    연결 실패 {attempt}/{tries}: {e}", file=sys.stderr)
+            if attempt < tries:
+                time.sleep(5 * attempt)
         except Exception as e:
             last = e
             print(f"    연결 실패 {attempt}/{tries}: {e}", file=sys.stderr)
