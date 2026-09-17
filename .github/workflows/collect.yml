@@ -3,7 +3,11 @@ name: 운항 데이터 수집
 on:
   schedule:
     # 매일 23:40 KST (14:40 UTC) — 당일 게이트 배정이 확정된 뒤
+    # 실측: GitHub 예약 실행은 4~5시간 늦게 시작되고, API 연결 시간 초과로
+    # 하루 통째로 실패한 날도 있었다. 승객예고는 소급 수집이 안 되므로
+    # 한 번 빠지면 영구히 비게 된다. 보조로 11:40 KST(02:40 UTC)에 한 번 더 돈다.
     - cron: "40 14 * * *"
+    - cron: "40 2 * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,14 +27,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 수집
+      # 각 수집은 서로 독립이다. 한쪽이 실패해도 다른 쪽과 커밋은 진행하고,
+      # 실패 여부는 맨 마지막 단계에서 작업 실패로 드러낸다.
+      - name: 운항 수집
+        id: flights
+        continue-on-error: true
         env:
           ICN_API_KEY: ${{ secrets.ICN_API_KEY }}
         run: python scripts/collect.py
 
       # 승객예고는 D+0·D+1만 제공해 소급 수집이 안 된다. 매일 쌓는다.
-      # 새로 붙인 API라, 실패해도 운항 수집 커밋은 막지 않는다.
       - name: 승객예고 수집
+        id: passengers
         continue-on-error: true
         env:
           ICN_API_KEY: ${{ secrets.ICN_API_KEY }}
@@ -45,5 +53,13 @@ jobs:
             echo "변경 없음"
           else
             git commit -m "data: $(date -u -d '+9 hours' +%Y-%m-%d) 수집"
+            git pull --rebase
             git push
           fi
+
+      - name: 수집 실패 확인
+        if: steps.flights.outcome == 'failure' || steps.passengers.outcome == 'failure'
+        run: |
+          [ "${{ steps.flights.outcome }}" = "failure" ] && echo "::error::운항 수집 실패"
+          [ "${{ steps.passengers.outcome }}" = "failure" ] && echo "::error::승객예고 수집 실패"
+          exit 1
