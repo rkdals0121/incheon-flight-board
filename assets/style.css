@@ -269,12 +269,17 @@ footer p+p{margin-top:6px}
 @media (max-width:640px){
   :root{--gut:46px}
   .controls{position:static}
-  .fl{grid-template-columns:46px 1fr;row-gap:2px}
-  .fl-f{grid-column:2}
-  .fl-d{grid-column:1 / -1}
-  .tag{grid-column:1 / -1;justify-self:start}
-  .timeline .fl{grid-template-columns:46px 40px 1fr}
-  .timeline .fl-f{grid-column:3}
+  /* 한 편이 세 줄(시각·편명 / 도시 / 거리 태그)이라 목록이 매우 길었다. 태그를 첫 줄 오른쪽으로 올려 두 줄로 줄인다. */
+  .fl{grid-template-columns:46px 1fr auto;row-gap:2px}
+  .fl-t{grid-column:1;grid-row:1 / span 2}
+  .fl-f{grid-column:2;grid-row:1}
+  .tag{grid-column:3;grid-row:1;justify-self:end}
+  .fl-d{grid-column:2 / -1;grid-row:2}
+  .timeline .fl{grid-template-columns:46px 40px 1fr auto}
+  .timeline .fl-g{grid-column:2;grid-row:1 / span 2}
+  .timeline .fl-f{grid-column:3;grid-row:1}
+  .timeline .tag{grid-column:4}
+  .timeline .fl-d{grid-column:3 / -1}
   .now-line{scroll-margin-top:56px}
   #gates-sec{scroll-margin-top:56px}
   .band-bars{height:44px}
