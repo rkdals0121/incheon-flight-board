@@ -55,7 +55,7 @@ PARAM_FIXED = {"type": "json", "lang": "K"}
 # API 응답 필드 → 우리 스키마. 키가 없으면 순서대로 다음 후보를 찾는다.
 FIELD_MAP = {
     "flight": ["flightId", "flightid", "airFln", "fnumber"],
-    "master": ["masterFlightId", "masterflight", "masterFln"],
+    "master": ["masterflightid", "masterFlightId", "masterflight", "masterFln"],
     "codeshare": ["codeshare", "codeShare"],
     "airline": ["airline", "airlineKorean", "airlineNameKo"],
     "gate": ["gatenumber", "gateNumber", "gate"],
@@ -68,6 +68,8 @@ FIELD_MAP = {
     "typeOfFlight": ["typeOfFlight", "flightType"],
     "carousel": ["carousel"],
     "exitnumber": ["exitnumber", "exitNumber"],
+    "checkin": ["chkinrange", "chkinRange"],          # 출발편 체크인 카운터 범위
+    "stand": ["fstandposition", "fstandPosition"],    # 주기장 위치
 }
 
 TERMINAL_CODE = {  # API 터미널 코드 → 우리 키
@@ -144,6 +146,8 @@ def normalize(row, kind):
         "intl": pick(row, "typeOfFlight") or "",
         "carousel": pick(row, "carousel"),
         "exit": pick(row, "exitnumber"),
+        "checkin": pick(row, "checkin"),
+        "stand": pick(row, "stand"),
     }
 
 
