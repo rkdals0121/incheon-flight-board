@@ -718,10 +718,33 @@ function emptyReason() {
   return "해당 조건에 운항 편이 없습니다. 조건을 바꿔 보세요.";
 }
 
+const EST_MIN = 10;
+function estShift(f) {
+  const ok = (s) => /^\d{12}$/.test(String(s || ""));
+  if (!ok(f.est) || !ok(f.sched)) return null;
+  const m = (s) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(8, 10), +s.slice(10, 12)) / 60000;
+  const min = m(f.est) - m(f.sched);
+  if (Math.abs(min) < EST_MIN) return null;
+  return {
+    min,
+    hhmm: `${f.est.slice(8, 10)}:${f.est.slice(10, 12)}`,
+    nextDay: f.est.slice(0, 8) > f.sched.slice(0, 8),
+    prevDay: f.est.slice(0, 8) < f.sched.slice(0, 8),
+  };
+}
+
 function flightRow(f, dir, withGate) {
   const r = el("div", "fl");
   const t = f.time ? `${f.time.slice(0, 2)}:${f.time.slice(2)}` : "--:--";
-  r.append(el("div", "fl-t", t));
+  const tc = el("div", "fl-t", t);
+  // API 의 변경(예상·실제) 시각. 대부분 1분 안팎이라 10분 이상 달라진 편만 표시한다.
+  const shift = estShift(f);
+  if (shift) {
+    const e = el("small", "fl-est", `→ ${shift.hhmm}${shift.nextDay ? " +1" : shift.prevDay ? " -1" : ""}`);
+    e.title = `변경 시각 ${shift.hhmm} (예정 ${t}, ${shift.min > 0 ? "+" : ""}${shift.min}분)`;
+    tc.append(e);
+  }
+  r.append(tc);
   if (withGate) {
     const g = el("div", "fl-g", f.gate);
     const z = zoneOf(f.terminal || termOfGate(f.gate), f.gate);
