@@ -69,11 +69,11 @@ const top = (arr, n) => {
 
 /* ── 필터 ───────────────────────────────────────────── */
 
-function visible() {
+function visible({ ignoreQuery = false } = {}) {
   const term = $("#sel-term").value;
   const dir = $("#sel-dir").value;
   const share = $("#sel-share").value;
-  const q = $("#q").value.trim().toLowerCase();
+  const q = ignoreQuery ? "" : $("#q").value.trim().toLowerCase();
 
   return S.flights.filter((f) => {
     if (f.dir !== dir) return false;
@@ -657,7 +657,7 @@ function renderGates(rows) {
   host.replaceChildren();
 
   if (!rows.length) {
-    host.append(el("div", "empty", "해당 조건에 운항 편이 없습니다. 조건을 바꿔 보세요."));
+    host.append(el("div", "empty", emptyReason()));
     return;
   }
 
@@ -700,6 +700,22 @@ function renderGates(rows) {
     card.append(body);
     host.append(card);
   }
+}
+
+/* 빈 결과의 원인을 알려준다. 대부분은 게이트가 아직 배정되지 않은 날짜다. */
+const GATE_RATE_MIN = 0.8;
+function emptyReason() {
+  const term = $("#sel-term").value, dir = $("#sel-dir").value, share = $("#sel-share").value;
+  const pool = S.flights.filter((f) => f.dir === dir &&
+    (share !== "master" || !f.codeshare || f.codeshare === "Master") &&
+    (term === "ALL" || (f.terminal || termOfGate(f.gate)) === term));
+  if (pool.length && pool.filter((f) => f.gate).length / pool.length < GATE_RATE_MIN) {
+    return "이 날짜는 아직 게이트가 배정되지 않았습니다. 최근 날짜를 선택해 보세요.";
+  }
+  const q = $("#q").value.trim();
+  // 검색어를 빼면 결과가 있을 때만 검색어 탓으로 안내한다
+  if (q && visible({ ignoreQuery: true }).length) return `검색어 "${q}"에 맞는 편이 없습니다.`;
+  return "해당 조건에 운항 편이 없습니다. 조건을 바꿔 보세요.";
 }
 
 function flightRow(f, dir, withGate) {
