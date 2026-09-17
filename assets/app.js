@@ -1253,4 +1253,15 @@ async function boot() {
 }
 
 boot();
+
+// 홈 화면에 추가해 쓸 때, 연결이 끊겨도 마지막으로 본 데이터를 보여준다 (sw.js 참고)
+// 연결이 끊기면 지금 보는 게 마지막으로 받은 사본이라는 걸 알린다
+const netNote = () => { const n = $("#offline"); if (n) n.hidden = navigator.onLine; };
+window.addEventListener("online", netNote);
+window.addEventListener("offline", netNote);
+netNote();
+
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 })();

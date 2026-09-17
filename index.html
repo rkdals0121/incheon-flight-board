@@ -7,7 +7,12 @@
 <meta name="description" content="인천공항 터미널·게이트별 출도착 편과 노선 특성 조회">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="assets/style.css?v=20260917n">
+<link rel="stylesheet" href="assets/style.css?v=20260917o">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12232e">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<meta name="apple-mobile-web-app-title" content="인천공항 게이트">
 </head>
 <body>
 
@@ -58,7 +63,7 @@
   <span class="sumbar-t"></span><span class="sumbar-go">조건 변경</span>
 </button>
 
-<div class="wrap"><p id="stamp" class="stamp" hidden></p><p id="load-error" class="load-error" role="alert" hidden></p><p id="date-note" class="date-note" hidden></p></div>
+<div class="wrap"><p id="offline" class="load-error" role="status" hidden>인터넷 연결이 끊겼습니다. 마지막으로 받은 데이터를 보여주고 있습니다.</p><p id="stamp" class="stamp" hidden></p><p id="load-error" class="load-error" role="alert" hidden></p><p id="date-note" class="date-note" hidden></p></div>
 
 <main class="wrap">
 
@@ -108,6 +113,6 @@
   <p id="meta"></p>
 </footer>
 
-<script src="assets/app.js?v=20260917n"></script>
+<script src="assets/app.js?v=20260917o"></script>
 </body>
 </html>
