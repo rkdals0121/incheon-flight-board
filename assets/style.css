@@ -270,6 +270,8 @@ section{margin-bottom:34px}
 .fl-g{font-weight:600}
 .fl-g[data-am="1"]{color:var(--mark)}
 .fl-g[data-none="1"]{font-weight:400;font-size:.78rem;color:var(--dim)}
+.fl-hist{grid-column:3 / -1;font-size:.76rem;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help}
+.fl-hist-k{font-weight:600;color:var(--sea)}
 .pending-head{margin:18px 0 8px;font-size:.85rem;font-weight:600;color:var(--dim)}
 
 .empty{padding:26px 14px;text-align:center;color:var(--dim);background:var(--panel);
@@ -295,6 +297,7 @@ footer p+p{margin-top:6px}
   /* 좁은 화면에서 칩 두 개가 줄바꿈되면 다시 세 줄이 된다. 도착편은 출구·수취대를 우선하고 거리 구간은 숨긴다. */
   .tag-arr + .tag{display:none}
   .timeline .fl-d{grid-column:3 / -1}
+  .timeline .fl-hist{grid-column:3 / -1;grid-row:3}
   .now-line{scroll-margin-top:56px}
   #gates-sec{scroll-margin-top:56px}
   .band-bars{height:44px}

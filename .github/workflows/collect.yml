@@ -44,6 +44,12 @@ jobs:
           ICN_API_KEY: ${{ secrets.ICN_API_KEY }}
         run: python scripts/collect_passengers.py
 
+      # 편명별 최근 실제 배정 게이트 요약. 화면에서 게이트 미정 편에 보여준다.
+      - name: 게이트 기록 요약
+        id: history
+        continue-on-error: true
+        run: node scripts/build_gate_history.mjs
+
       - name: 커밋
         run: |
           git config user.name  "github-actions[bot]"
@@ -58,8 +64,9 @@ jobs:
           fi
 
       - name: 수집 실패 확인
-        if: steps.flights.outcome == 'failure' || steps.passengers.outcome == 'failure'
+        if: steps.flights.outcome == 'failure' || steps.passengers.outcome == 'failure' || steps.history.outcome == 'failure'
         run: |
           [ "${{ steps.flights.outcome }}" = "failure" ] && echo "::error::운항 수집 실패"
           [ "${{ steps.passengers.outcome }}" = "failure" ] && echo "::error::승객예고 수집 실패"
+          [ "${{ steps.history.outcome }}" = "failure" ] && echo "::error::게이트 기록 요약 실패"
           exit 1

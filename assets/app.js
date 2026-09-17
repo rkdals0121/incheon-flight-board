@@ -772,7 +772,7 @@ function effTime(f) {
   return estShift(f) ? String(f.est) : String(f.sched || "");
 }
 function isPast(f) {
-  if ($("#sel-date").value !== localToday()) return false;
+  if (S.loadedDay !== localToday()) return false;
   const at = effTime(f);
   return /^\d{12}$/.test(at) && at < nowStamp();
 }
@@ -850,8 +850,31 @@ function flightRow(f, dir, withGate) {
   tags.append(tag);
   r.append(tags);
 
-  r.title = `${dir === "D" ? "출발" : "도착"} ${t} ${withGate ? f.gate + "번 게이트 " : ""}${f.flight} ${f.city}`;
+  // 게이트 미정 편에는 같은 편명이 최근 실제로 쓴 게이트를 보여준다. 예측이 아니라 기록이다.
+  if (!f.gate) {
+    const past = gateHistory(f);
+    if (past.length) {
+      const h = el("div", "fl-hist");
+      h.append(el("span", "fl-hist-k", "최근 배정 기록"));
+      h.append(document.createTextNode(" " + past.map((p) => `${p.md} ${p.g}`).join(" · ")));
+      h.title = "같은 편명이 이전 날짜에 실제로 배정받은 게이트입니다. 이 날짜의 게이트를 예측한 값이 아닙니다.";
+      r.append(h);
+    }
+  }
+
+  r.title = `${dir === "D" ? "출발" : "도착"} ${t} ${withGate ? (f.gate || "미정") + "번 게이트 " : ""}${f.flight} ${f.city}`;
   return r;
+}
+
+/* 선택한 날짜 이전의 실제 배정 기록 최근 5건 */
+function gateHistory(f) {
+  const raw = S.history && S.history[`${f.dir}|${f.flight}`];
+  if (!raw) return [];
+  const sel = String(S.loadedDay || "").slice(2).replace(/-/g, ""); // YYMMDD, 실제로 로드된 날짜 기준
+  return raw.split(",").map((x) => x.split(":"))
+    .filter(([d]) => d < sel)
+    .slice(-5)
+    .map(([d, g]) => ({ md: `${d.slice(2, 4)}-${d.slice(4, 6)}`, g }));
 }
 
 /* ── 흐름 ───────────────────────────────────────────── */
@@ -1078,6 +1101,8 @@ async function boot() {
       j("data/zones.json"), j("data/geo.json"), j("data/index.json"),
     ]);
     S.airports = ap; S.airlines = al; S.zones = zn; S.geo = ge;
+    // 부가 정보라 받지 못해도 화면은 정상으로 띄운다
+    j("data/gate_history.json").then((h) => { S.history = h.flights || {}; if (S.loadedDay) draw(); }).catch(() => {});
     S.days = idx.days.slice().sort().reverse();
     S.indexUpdatedAt = idx.updatedAt || "";
 
