@@ -87,7 +87,7 @@ function visible({ ignoreQuery = false } = {}) {
     }
     if (S.gateFilter && f.gate !== S.gateFilter) return false;
     if (q) {
-      const hay = `${f.flight} ${f.city} ${f.country} ${f.airlineName} ${f.gate} ${f.port} ${f.band} ${f.alliance}`.toLowerCase();
+      const hay = `${f.flight} ${(f.shares || []).join(" ")} ${f.city} ${f.country} ${f.airlineName} ${f.gate} ${f.port} ${f.band} ${f.alliance}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -728,12 +728,22 @@ function flightRow(f, dir, withGate) {
     if (z && z.am) g.dataset.am = "1";
     r.append(g);
   }
-  r.append(el("div", "fl-f", f.flight));
+  const fn = el("div", "fl-f", f.flight);
+  if (f.shares && f.shares.length) {
+    const cs = el("small", "fl-cs", `+${f.shares.length}`);
+    cs.title = `공동운항 ${f.shares.join(", ")}`;
+    fn.append(cs);
+  }
+  r.append(fn);
 
   const d = el("div", "fl-d");
   d.append(document.createTextNode(f.city || f.port || "-"));
   const meta = [f.airlineName, f.country].filter(Boolean).join(" · ");
   if (meta) d.append(el("small", null, meta));
+  // 공동운항 편명으로 찾은 경우, 왜 이 편이 나왔는지 보여준다
+  const q = $("#q").value.trim().toLowerCase();
+  const hit = q && !f.flight.toLowerCase().includes(q) && (f.shares || []).find((s) => s.toLowerCase().includes(q));
+  if (hit) d.append(el("small", "fl-hit", `${hit} 공동운항`));
   r.append(d);
 
   const tag = el("span", "tag", f.km ? `${f.band} ${f.km.toLocaleString()}km` : (f.band || "미분류"));
@@ -879,6 +889,26 @@ function draw() {
 async function loadDay(day) {
   const blob = await j(`data/flights/${day}.json`);
   S.flights = blob.flights.map(enrich);
+  S.collectedAt = blob.collectedAt || "";
+  linkCodeshares(S.flights);
+}
+
+/* 승객은 티켓에 적힌 편명으로 찾는데, 그게 공동운항(코드쉐어) 편명인 경우가
+   많다. 기본 설정(코드쉐어 제외)에서는 그 편명이 목록에 없어 검색되지 않았다.
+   API의 master 필드가 비어 있어, 방향·예정시각·게이트·목적지가 같은 운항사
+   편에 공동운항 편명을 붙인다. 실측 결과 이 조합은 운항사 편마다 유일하다. */
+function linkCodeshares(flights) {
+  const key = (f) => `${f.dir}|${f.sched}|${f.gate}|${f.port}`;
+  const masters = new Map();
+  for (const f of flights) {
+    f.shares = [];
+    if (f.codeshare === "Master") masters.set(key(f), f);
+  }
+  for (const f of flights) {
+    if (f.codeshare !== "Slave") continue;
+    const m = masters.get(key(f));
+    if (m) m.shares.push(f.flight);
+  }
 }
 
 /* 당일 운항 파일이 750KB 안팎이라 모바일에서는 몇 초가 걸린다.

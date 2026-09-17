@@ -225,6 +225,8 @@ section{margin-bottom:34px}
 .fl-f{color:var(--dim);font-size:.82rem}
 .fl-d{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fl-d small{color:var(--dim);font-size:.76rem;margin-left:6px}
+.fl-cs{margin-left:4px;font-size:.7rem;color:var(--sea);cursor:help}
+.fl-d .fl-hit{color:var(--sea);font-weight:600}
 .tag{
   font-size:.7rem;padding:1px 6px;border-radius:2px;border:1px solid var(--rule);
   color:var(--dim);white-space:nowrap;
