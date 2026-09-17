@@ -26,18 +26,21 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== self.location.origin) return;
 
+  // 페이지 이동은 조회 조건(?d=&t=…)마다 주소가 달라 사본이 끝없이 쌓인다. 하나로 저장한다.
+  const nav = req.mode === "navigate";
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
       const res = await fetch(req);
       if (res.ok) {
-        await cache.put(req, res.clone());
+        await cache.put(nav ? "index.html" : req, res.clone());
         if (url.pathname.includes("/data/flights/")) await pruneFlights(cache);
       }
       return res;
     } catch (err) {
-      const hit = await cache.match(req, { ignoreSearch: url.pathname.includes("/assets/") })
-        || (req.mode === "navigate" ? await cache.match("index.html") : null);
+      const hit = nav
+        ? await cache.match("index.html")
+        : await cache.match(req, { ignoreSearch: url.pathname.includes("/assets/") });
       if (hit) return hit;
       throw err;
     }
