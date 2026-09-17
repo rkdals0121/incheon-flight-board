@@ -18,9 +18,18 @@ API는 당일(D+0)과 익일(D+1)만 준다. 과거 날짜는 소급해 받을 �
     저장하고, 같은 날짜를 전날(D+1)과 당일(D+0)에 각각 받은 것을 모두
     남긴다. 예고값은 시점마다 달라지므로 덮어쓰면 비교할 수 없게 된다.
 
-파라미터 이름 주의:
-    포털 페이지에 명세가 노출되지 않아 활용가이드 docx 기준으로 확인이
-    필요하다. 아래 설정 블록 한 곳만 고치면 된다. --probe 로 먼저 확인할 것.
+명세:
+    포털 상세 페이지(data.go.kr/data/15095066/openapi.do) 소스에 내장된
+    swagger 명세 기준. 화면에는 렌더링되지 않으니 소스를 볼 것.
+    응답 필드: adate(YYYYMMDD), atime(HH_HH, 1시간 간격),
+      t1eg1~4·t1egsum1 (T1 입국장·입국심사), t1dg1~6·t1dgsum1 (T1 출국장),
+      t2eg1~2·t2egsum1 (T2 입국장), t2dg1~2·t2dgsum2 (T2 출국장), tmp1·tmp2
+    단위는 전부 인원 수.
+
+대민 표출 주의:
+    포털 안내에 "예상 혼잡도 성격의 대민 서비스에 개발 시에는 사용자
+    안내문구에 대해 관리부서와 협의가 필요"라고 적혀 있다. 수집은 문제없으나
+    공개 화면에 띄우기 전에 확인할 것.
 """
 
 import argparse
@@ -40,14 +49,17 @@ OUT_DIR = ROOT / "data" / "passengers"
 KST = ZoneInfo("Asia/Seoul")   # 러너는 UTC다. 날짜를 KST로 명시해야 하루 밀리지 않는다.
 
 # ── 여기만 고치면 됨 ──────────────────────────────────────────────
-BASE = "https://apis.data.go.kr/B551177/PassengerNoticeKR"
-ENDPOINT = "/getfPassengerNoticeIKR"
+BASE = "https://apis.data.go.kr/B551177/passgrAnncmt"
+ENDPOINT = "/getPassgrAnncmt"
 PARAMS = {
     "key": "serviceKey",
     "date": "selectdate",   # 0=당일, 1=익일
     "type": "type",
+    "rows": "numOfRows",    # 필수
+    "page": "pageNo",       # 필수
 }
-PARAM_FIXED = {"type": "json"}
+# 시간대 24행 안팎이라 한 페이지로 충분하다
+PARAM_FIXED = {"type": "json", "rows": "100", "page": "1"}
 OFFSETS = {"D0": "0", "D1": "1"}
 # ─────────────────────────────────────────────────────────────────
 
