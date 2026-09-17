@@ -28,6 +28,14 @@ jobs:
           ICN_API_KEY: ${{ secrets.ICN_API_KEY }}
         run: python scripts/collect.py
 
+      # 승객예고는 D+0·D+1만 제공해 소급 수집이 안 된다. 매일 쌓는다.
+      # 새로 붙인 API라, 실패해도 운항 수집 커밋은 막지 않는다.
+      - name: 승객예고 수집
+        continue-on-error: true
+        env:
+          ICN_API_KEY: ${{ secrets.ICN_API_KEY }}
+        run: python scripts/collect_passengers.py
+
       - name: 커밋
         run: |
           git config user.name  "github-actions[bot]"
