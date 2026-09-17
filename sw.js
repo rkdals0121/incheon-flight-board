@@ -5,7 +5,7 @@
  * 남는 문제(assets 캐시 1시간 문제와 같은 종류)가 다시 생긴다. 네트워크 요청이
  * 실패했을 때만 캐시에 저장해 둔 사본을 돌려준다.
  */
-const CACHE = "icn-board-v1";
+const CACHE = "icn-board-v2";   // 캐시 구조를 바꾸면 올린다. 활성화 때 이전 캐시를 지운다.
 const SHELL = ["./", "index.html", "manifest.webmanifest"];
 const MAX_FLIGHT_FILES = 4;   // 날짜별 운항 파일은 크다(약 750KB). 최근 본 것만 남긴다.
 
