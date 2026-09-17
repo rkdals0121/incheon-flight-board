@@ -797,6 +797,23 @@ function dayOffset(d) {
 const isTentative = (d) => dayOffset(d) >= 2;
 const dowOf = (d) => KO_DOW[new Date(d + "T00:00:00").getDay()];
 
+/* 게이트·시각은 수집 이후 바뀔 수 있다. 언제 기준인지 알려준다.
+   collectedAt 은 GitHub Actions 러너(UTC)의 로컬 시각이라 시간대 표기가 없다.
+   UTC 로 해석해 한국 시간으로 보여준다. (collect.py 의 datetime.now()) */
+function renderStamp() {
+  const n = $("#stamp");
+  const raw = S.collectedAt;
+  if (!n || !raw) { if (n) n.hidden = true; return; }
+  const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(raw) ? raw : raw + "Z";
+  const t = new Date(iso);
+  if (isNaN(t)) { n.hidden = true; return; }
+  const p = Object.fromEntries(new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(t).map((x) => [x.type, x.value]));
+  n.textContent = `운항 정보 ${p.month}-${p.day} ${p.hour}:${p.minute} 수집 기준 · 이후 변경은 반영되지 않았을 수 있습니다`;
+  n.hidden = false;
+}
+
 function renderDateNote() {
   const note = $("#date-note");
   const d = $("#sel-date").value;
@@ -895,6 +912,7 @@ function watchControls() {
 function draw() {
   const rows = visible();
   renderDateNote();
+  renderStamp();
   renderMap(rows);
   renderSpine(rows);
   renderAM();
