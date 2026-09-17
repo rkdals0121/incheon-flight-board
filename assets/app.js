@@ -738,6 +738,46 @@ function renderDateNote() {
   }
 }
 
+/* ── 조회 조건 ↔ URL ─────────────────────────────────
+   조건을 쿼리스트링에 담아 링크로 공유할 수 있게 한다. 뒤로가기가 조건
+   변경 하나하나를 되짚지 않도록 pushState 가 아니라 replaceState 를 쓴다.
+   잘못된 값은 조용히 무시하고 기본값을 유지한다. */
+const TERMS = ["ALL", "T1", "CONCOURSE", "T2"];
+
+function applyQuery() {
+  const q = new URLSearchParams(location.search);
+  const d = q.get("d");
+  if (d && S.days.includes(d)) $("#sel-date").value = d;
+  const t = q.get("t");
+  if (TERMS.includes(t)) $("#sel-term").value = t;
+  const dir = q.get("dir");
+  if (dir === "D" || dir === "A") $("#sel-dir").value = dir;
+  const share = q.get("share");
+  if (share === "master" || share === "all") $("#sel-share").value = share;
+  if (q.get("q")) $("#q").value = q.get("q").slice(0, 60);
+
+  const gate = q.get("gate"), zone = q.get("zone");
+  if (gate && /^\d{1,3}$/.test(gate)) {
+    S.gateFilter = String(parseInt(gate, 10));
+  } else if (zone && Object.values(S.zones.terminals).some((t) => t.zones.some((z) => z.id === zone))) {
+    S.zoneFilter = zone;
+  }
+}
+
+function syncQuery() {
+  const q = new URLSearchParams();
+  q.set("d", $("#sel-date").value);
+  q.set("t", $("#sel-term").value);
+  q.set("dir", $("#sel-dir").value);
+  if ($("#sel-share").value !== "master") q.set("share", $("#sel-share").value);
+  const s = $("#q").value.trim();
+  if (s) q.set("q", s);
+  if (S.gateFilter) q.set("gate", S.gateFilter);
+  else if (S.zoneFilter) q.set("zone", S.zoneFilter);
+  const next = `${location.pathname}?${q}`;
+  if (next !== location.pathname + location.search) history.replaceState(null, "", next);
+}
+
 function draw() {
   const rows = visible();
   renderDateNote();
@@ -748,6 +788,7 @@ function draw() {
   renderGates(rows);
   const d = $("#sel-date").value;
   $("#meta").textContent = `${d} 기준 ${rows.length}편 표시 · 저장된 날짜 ${S.days.length}일`;
+  syncQuery();
 }
 
 async function loadDay(day) {
@@ -787,6 +828,7 @@ async function boot() {
     }
     const today = localToday();
     sel.value = S.days.includes(today) ? today : firm[0] || S.days[0];
+    applyQuery();   // 공유 링크의 조건이 있으면 기본값 위에 덮어쓴다
 
     await loadDay(sel.value);
 
