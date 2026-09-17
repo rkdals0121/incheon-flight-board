@@ -691,6 +691,8 @@ function renderGates(rows) {
     const head = el("div", "gate-n");
     head.append(el("b", null, g));
     head.append(el("small", null, `${list.length}편`));
+    // "서편 AM 구간 (219~224)" → "서편 AM 구간". 카드가 좁아 괄호 범위는 뺀다.
+    if (z) head.append(el("small", "gate-z", z.label.replace(/\s*\([^)]*\)\s*$/, "")));
     card.append(head);
 
     const body = el("div", "gate-body");

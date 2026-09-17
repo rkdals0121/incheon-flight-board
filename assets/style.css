@@ -196,6 +196,8 @@ section{margin-bottom:34px}
 }
 .gate-n b{font-size:1.3rem;font-weight:640;line-height:1}
 .gate-n small{font-size:.64rem;color:var(--dim)}
+.gate-n .gate-z{text-align:center;line-height:1.25;word-break:keep-all;margin-top:2px}
+.gate[data-am="1"] .gate-z{color:var(--mark)}
 .gate[data-am="1"] .gate-n{background:#fbeff1}
 .gate[data-am="1"] .gate-n b{color:var(--mark)}
 .gate-body{min-width:0}
