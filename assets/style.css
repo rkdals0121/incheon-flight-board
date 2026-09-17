@@ -12,6 +12,8 @@
 }
 
 *{box-sizing:border-box}
+/* hidden 속성은 display 를 지정한 규칙보다 우선해야 한다 */
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{
   margin:0;
