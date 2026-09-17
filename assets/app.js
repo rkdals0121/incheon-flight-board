@@ -1094,6 +1094,15 @@ async function boot() {
     };
 
     watchControls();
+    // 공항에서 탭을 열어 둔 채 쓰면 "지금" 구분선과 지난 편 표시가 연 시점에 멈춘다.
+    // 오늘 날짜일 때만 목록을 1분마다, 탭으로 돌아왔을 때 즉시 갱신한다.
+    const tick = () => {
+      if (document.hidden || $("#sel-date").value !== localToday()) return;
+      renderGates(visible());
+      $("#jump-now").hidden = !document.querySelector("#now-line");
+    };
+    setInterval(tick, 60000);
+    document.addEventListener("visibilitychange", tick);
     draw();
   } catch (e) {
     console.error(e);
