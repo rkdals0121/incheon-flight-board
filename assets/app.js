@@ -874,20 +874,35 @@ function dayOffset(d) {
 const isTentative = (d) => dayOffset(d) >= 2;
 const dowOf = (d) => KO_DOW[new Date(d + "T00:00:00").getDay()];
 
-/* 게이트·시각은 수집 이후 바뀔 수 있다. 언제 기준인지 알려준다.
-   collectedAt 은 GitHub Actions 러너(UTC)의 로컬 시각이라 시간대 표기가 없다.
-   UTC 로 해석해 한국 시간으로 보여준다. (collect.py 의 datetime.now()) */
-function renderStamp() {
-  const n = $("#stamp");
-  const raw = S.collectedAt;
-  if (!n || !raw) { if (n) n.hidden = true; return; }
-  const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(raw) ? raw : raw + "Z";
-  const t = new Date(iso);
-  if (isNaN(t)) { n.hidden = true; return; }
+/* 수집 스크립트의 시각은 GitHub Actions 러너(UTC)의 datetime.now() 라 시간대 표기가 없다.
+   UTC 로 해석한다. */
+function parseRunnerTime(raw) {
+  if (!raw) return null;
+  const t = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(raw) ? raw : raw + "Z");
+  return isNaN(t) ? null : t;
+}
+function kstLabel(t) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
   }).formatToParts(t).map((x) => [x.type, x.value]));
-  n.textContent = `운항 정보 ${p.month}-${p.day} ${p.hour}:${p.minute} 수집 기준 · 이후 변경은 반영되지 않았을 수 있습니다`;
+  return `${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}
+
+/* 게이트·시각은 수집 이후 바뀔 수 있다. 언제 기준인지 알려준다.
+   수집은 하루 두 번 돈다. 마지막 수집(index.json 의 updatedAt)이 30시간을 넘기면
+   수집이 멈춘 것이므로 따로 알린다. 파일별 수집 시각은 지난 날짜일수록 원래
+   오래되므로 이 판단에 쓰지 않는다. */
+const STALE_HOURS = 30;
+function renderStamp() {
+  const n = $("#stamp");
+  const t = parseRunnerTime(S.collectedAt);
+  if (!n || !t) { if (n) n.hidden = true; return; }
+  n.replaceChildren();
+  n.append(document.createTextNode(`운항 정보 ${kstLabel(t)} 수집 기준 · 이후 변경은 반영되지 않았을 수 있습니다`));
+  const last = parseRunnerTime(S.indexUpdatedAt);
+  if (last && Date.now() - last.getTime() > STALE_HOURS * 3600000) {
+    n.append(el("span", "stamp-warn", ` · 마지막 수집 ${kstLabel(last)} 이후 새 데이터가 없습니다`));
+  }
   n.hidden = false;
 }
 
@@ -1064,6 +1079,7 @@ async function boot() {
     ]);
     S.airports = ap; S.airlines = al; S.zones = zn; S.geo = ge;
     S.days = idx.days.slice().sort().reverse();
+    S.indexUpdatedAt = idx.updatedAt || "";
 
     if (!S.days.length) {
       $("#gates").append(el("div", "empty", "저장된 운항 데이터가 없습니다. scripts/collect.py 를 먼저 실행하세요."));
@@ -1078,7 +1094,9 @@ async function boot() {
       sel.append(new Option(`${d} (${dowOf(d)})${isTentative(d) ? " · 미확정" : ""}`, d));
     }
     const today = localToday();
-    sel.value = S.days.includes(today) ? today : firm[0] || S.days[0];
+    // 오늘 파일이 없으면(수집 실패 등) 오늘 이전 중 가장 가까운 날짜. 확정 날짜 최신은 내일일 수 있다.
+    const before = S.days.filter((d) => d <= today).sort();
+    sel.value = S.days.includes(today) ? today : before.pop() || firm[0] || S.days[0];
     applyQuery();   // 공유 링크의 조건이 있으면 기본값 위에 덮어쓴다
 
     await loadDay(sel.value);

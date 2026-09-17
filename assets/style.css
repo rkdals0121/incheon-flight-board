@@ -80,6 +80,7 @@ section{margin-bottom:34px}
 
 /* 수집 기준 시각 */
 .stamp{margin-top:8px;font-size:.76rem;color:var(--dim)}
+.stamp-warn{color:var(--mark);font-weight:600}
 
 /* 날짜 로드 실패 */
 .load-error{
